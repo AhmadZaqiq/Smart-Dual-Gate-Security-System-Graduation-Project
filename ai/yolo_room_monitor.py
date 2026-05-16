@@ -4,7 +4,7 @@ import threading
 from flask import Flask, Response
 from ultralytics import YOLO
 
-MODEL_PATH = "ai/human_figure_yolo.pt"
+MODEL_PATH = "ai/models/human_figure_yolo.pt"
 CAMERA_PATH = "/dev/video2"
 CONFIDENCE_THRESHOLD = 0.50
 
