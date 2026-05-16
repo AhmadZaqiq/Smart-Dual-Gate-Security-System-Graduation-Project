@@ -5,7 +5,6 @@ from core import states
 from hardware import devices
 from hardware import indicators
 from ai import yolo_room_monitor
-from ai import expression_analyzer
 from auth import authentication_manager
 from database import system_logger
 from utils import notification_manager
@@ -29,7 +28,6 @@ class MantrapFSM:
 
         authentication_manager.stop_authentication_modules()
         yolo_room_monitor.stop_room_monitor()
-        expression_analyzer.stop_expression_analysis()
 
         indicators.stop_alarm()
 
@@ -42,7 +40,6 @@ class MantrapFSM:
     def stop_system(self):
         authentication_manager.stop_authentication_modules()
         yolo_room_monitor.stop_room_monitor()
-        expression_analyzer.stop_expression_analysis()
 
         devices.lock_both_solenoids()
         devices.set_red_status()
@@ -266,8 +263,6 @@ class MantrapFSM:
         authentication_manager.reset_authentication_session()
         authentication_manager.start_authentication_modules()
 
-        expression_analyzer.start_expression_analysis()
-
         devices.set_green_status()
 
         system_logger.log_info("Authentication modules activated")
@@ -284,14 +279,6 @@ class MantrapFSM:
         if devices.is_outer_push_button_pressed():
             system_logger.log_info("User cancelled authentication")
             self.change_state(states.CANCEL_AND_EXIT)
-            return
-
-        if not expression_analyzer.is_expression_safe(
-            settings.STRESS_THRESHOLD,
-            settings.ANGER_THRESHOLD
-        ):
-            system_logger.log_security("Unsafe facial expression")
-            self.change_state(states.SECURITY_LOCKDOWN)
             return
 
         auth_result = authentication_manager.process_authentication()
@@ -362,7 +349,6 @@ class MantrapFSM:
 
     def handle_cancel_and_exit(self):
         authentication_manager.stop_authentication_modules()
-        expression_analyzer.stop_expression_analysis()
         yolo_room_monitor.stop_room_monitor()
 
         devices.set_red_status()
@@ -387,7 +373,6 @@ class MantrapFSM:
 
     def handle_security_lockdown(self):
         authentication_manager.stop_authentication_modules()
-        expression_analyzer.stop_expression_analysis()
         yolo_room_monitor.stop_room_monitor()
 
         devices.lock_both_solenoids()
@@ -412,7 +397,6 @@ class MantrapFSM:
 
     def finish_successful_access(self):
         authentication_manager.stop_authentication_modules()
-        expression_analyzer.stop_expression_analysis()
         yolo_room_monitor.stop_room_monitor()
 
         devices.set_red_status()
