@@ -11,7 +11,7 @@ REFERENCE_IMAGE = os.path.expanduser(
     "~/mantrap_project/auth/face_data/reference_face.jpg"
 )
 
-FACE_CAM_DEVICE = "/dev/video0"
+FACE_CAM_DEVICE = 0
 
 print("FACE_READY", flush=True)
 

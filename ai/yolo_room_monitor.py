@@ -12,10 +12,13 @@ app = Flask(__name__)
 
 model = None
 camera = None
+
 monitor_running = False
+flask_server_started = False
 
 latest_count = 0
 latest_frame = None
+
 lock = threading.Lock()
 
 
@@ -39,6 +42,7 @@ def open_camera():
 
 def start_room_monitor():
     global monitor_running
+    global flask_server_started
 
     if monitor_running:
         return
@@ -52,15 +56,16 @@ def start_room_monitor():
         target=room_monitor_loop,
         daemon=True
     )
-
     monitor_thread.start()
 
-    flask_thread = threading.Thread(
-        target=start_flask_server,
-        daemon=True
-    )
+    if not flask_server_started:
+        flask_thread = threading.Thread(
+            target=start_flask_server,
+            daemon=True
+        )
+        flask_thread.start()
 
-    flask_thread.start()
+        flask_server_started = True
 
     print("[AI] YOLO room monitor started")
     print("[AI] Open stream: http://192.168.1.28:5000")
@@ -68,8 +73,18 @@ def start_room_monitor():
 
 def stop_room_monitor():
     global monitor_running
+    global camera
 
     monitor_running = False
+
+    time.sleep(1)
+
+    if camera is not None:
+        camera.release()
+        camera = None
+
+    cv2.destroyAllWindows()
+
     print("[AI] YOLO room monitor stopped")
 
 
@@ -81,8 +96,8 @@ def is_exactly_one_detected():
     return latest_count == 1
 
 
-def is_multiple_detected():
-    return latest_count > 1
+def is_invalid_count_detected():
+    return latest_count != 1
 
 
 def room_monitor_loop():
