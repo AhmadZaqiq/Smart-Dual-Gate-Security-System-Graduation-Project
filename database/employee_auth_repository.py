@@ -40,23 +40,6 @@ def get_authentication_by_employee_id(employee_id):
     return execute_query_one(query, (employee_id,))
 
 
-def get_employee_by_rfid_uid(rfid_uid):
-    query = """
-        SELECT
-            E.EmployeeID,
-            E.EmployeeNumber,
-            E.IsActive,
-            EA.RFIDUID,
-            P.FirstName || ' ' || P.SecondName || ' ' || P.ThirdName || ' ' || P.LastName AS FullName
-        FROM EmployeeAuthentication EA
-        INNER JOIN Employee E ON E.EmployeeID = EA.EmployeeID
-        INNER JOIN Person P ON P.PersonID = E.PersonID
-        WHERE EA.RFIDUID = ?
-          AND E.IsActive = 1
-          AND E.IsDeleted = 0
-          AND P.IsDeleted = 0;
-    """
-
     return execute_query_one(query, (str(rfid_uid),))
 
 

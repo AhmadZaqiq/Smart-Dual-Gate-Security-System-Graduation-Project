@@ -12,7 +12,6 @@ print("\n========== EMPLOYEES ==========")
 pprint(get_all_employees())
 
 print("\n========== EMPLOYEE BY RFID ==========")
-pprint(get_employee_by_rfid_uid("682511166205"))
 
 print("\n========== EMPLOYEE BY FINGERPRINT ==========")
 pprint(get_employee_by_fingerprint_position(0))

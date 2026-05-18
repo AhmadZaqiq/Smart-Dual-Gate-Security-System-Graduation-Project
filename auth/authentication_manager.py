@@ -12,6 +12,8 @@ from employee_repository import (
     start_access_session
 )
 
+from system_setting_repository import get_setting_value
+
 
 class AuthenticationManager:
     def __init__(self):
@@ -42,6 +44,31 @@ class AuthenticationManager:
 
     def get_current_access_session_id(self):
         return self.current_access_session_id
+
+    def _get_int_setting(self, key, default_value):
+        try:
+            return int(get_setting_value(key, default_value))
+        except Exception:
+            return default_value
+
+    def _get_bool_setting(self, key, default_value=True):
+        try:
+            return int(get_setting_value(key, 1 if default_value else 0)) == 1
+        except Exception:
+            return default_value
+
+    def _load_auth_settings(self):
+        return {
+            "max_rfid_attempts": self._get_int_setting("MAX_RFID_ATTEMPTS", 3),
+            "max_fingerprint_attempts": self._get_int_setting("MAX_FINGERPRINT_ATTEMPTS", 3),
+            "max_face_attempts": self._get_int_setting("MAX_FACE_ATTEMPTS", 3),
+            "max_behavior_attempts": self._get_int_setting("MAX_BEHAVIOR_ATTEMPTS", 1),
+            "max_total_attempts": self._get_int_setting("MAX_AUTH_TOTAL_ATTEMPTS", 10),
+            "require_rfid": self._get_bool_setting("REQUIRE_RFID", True),
+            "require_fingerprint": self._get_bool_setting("REQUIRE_FINGERPRINT", True),
+            "require_face": self._get_bool_setting("REQUIRE_FACE_RECOGNITION", True),
+            "require_behavior": self._get_bool_setting("REQUIRE_BEHAVIOR_ANALYSIS", True),
+        }
 
     def _run_helper(self, script_name):
         script_path = os.path.join(self.auth_dir, script_name)
@@ -88,158 +115,207 @@ class AuthenticationManager:
             failure_reason=failure_reason
         )
 
+    def _is_total_attempts_exceeded(self, settings):
+        return self.failed_attempts >= settings["max_total_attempts"]
+
     def process_authentication(self):
         if self.authentication_completed:
             return False
 
+        settings = self._load_auth_settings()
+
         print("[AUTH] Starting isolated authentication flow")
+        print(f"[AUTH] Loaded settings: {settings}")
+
+        rfid_status = "SKIPPED"
+        fingerprint_status = "SKIPPED"
+        face_status = "SKIPPED"
+        behavior_status = "SKIPPED"
 
         # =========================
         # STEP 1 - RFID
         # =========================
-        print("[AUTH] Step 1: RFID")
-        rfid_ok, rfid_output = self._run_helper("auth_rfid_only.py")
+        if settings["require_rfid"]:
+            print("[AUTH] Step 1: RFID")
 
-        if not rfid_ok:
-            print("[AUTH] RFID failed")
-            self.failed_attempts += 1
-            self._log_failed_attempt(
-                rfid_status="RFID_FAILED",
-                failure_reason="RFID authentication failed"
-            )
-            return False
+            rfid_ok = False
 
-        rfid_data = self._get_value_from_output(rfid_output, "RFID_OK:")
+            for attempt in range(1, settings["max_rfid_attempts"] + 1):
+                print(f"[AUTH] RFID attempt {attempt}/{settings['max_rfid_attempts']}")
 
-        if not rfid_data or len(rfid_data) < 2:
-            print("[AUTH] RFID returned invalid employee data")
-            self.failed_attempts += 1
-            self._log_failed_attempt(
-                rfid_status="RFID_INVALID_DATA",
-                failure_reason="RFID returned invalid employee data"
-            )
-            return False
+                helper_ok, rfid_output = self._run_helper("auth_rfid_only.py")
 
-        rfid_employee_id = int(rfid_data[1])
-        self.current_employee_id = rfid_employee_id
+                if helper_ok:
+                    rfid_data = self._get_value_from_output(rfid_output, "RFID_OK:")
 
-        print(f"[AUTH] RFID employee matched: {rfid_employee_id}")
+                    if rfid_data and len(rfid_data) >= 2:
+                        rfid_token = rfid_data[1]
+                        print(f"[AUTH] RFID shared token accepted: {rfid_token}")
+                        rfid_status = "RFID_OK"
+                        rfid_ok = True
+                        break
+
+                self.failed_attempts += 1
+                print("[AUTH] RFID attempt failed")
+
+                if self._is_total_attempts_exceeded(settings):
+                    break
+
+            if not rfid_ok:
+                self._log_failed_attempt(
+                    rfid_status="RFID_FAILED",
+                    fingerprint_status=fingerprint_status,
+                    face_status=face_status,
+                    behavior_status=behavior_status,
+                    failure_reason="RFID authentication failed"
+                )
+                return False
+
+        else:
+            print("[AUTH] RFID step skipped by system settings")
 
         # =========================
         # STEP 2 - FINGERPRINT
         # =========================
-        print("[AUTH] Step 2: Fingerprint")
-        finger_ok, finger_output = self._run_helper("auth_fingerprint_only.py")
+        if settings["require_fingerprint"]:
+            print("[AUTH] Step 2: Fingerprint")
 
-        if not finger_ok:
-            print("[AUTH] Fingerprint process failed")
-            self.failed_attempts += 1
-            self._log_failed_attempt(
-                rfid_status="RFID_OK",
-                fingerprint_status="FINGER_FAILED",
-                failure_reason="Fingerprint authentication failed"
-            )
-            return False
+            fingerprint_ok = False
 
-        finger_data = self._get_value_from_output(finger_output, "FINGER_OK:")
+            for attempt in range(1, settings["max_fingerprint_attempts"] + 1):
+                print(f"[AUTH] Fingerprint attempt {attempt}/{settings['max_fingerprint_attempts']}")
 
-        if not finger_data or len(finger_data) < 4:
-            print("[AUTH] Fingerprint returned invalid employee data")
-            self.failed_attempts += 1
-            self._log_failed_attempt(
-                rfid_status="RFID_OK",
-                fingerprint_status="FINGER_INVALID_DATA",
-                failure_reason="Fingerprint returned invalid employee data"
-            )
-            return False
+                helper_ok, finger_output = self._run_helper("auth_fingerprint_only.py")
 
-        finger_employee_id = int(finger_data[1])
-        finger_position = finger_data[2]
-        finger_accuracy = finger_data[3]
+                if helper_ok:
+                    finger_data = self._get_value_from_output(finger_output, "FINGER_OK:")
 
-        if finger_employee_id != rfid_employee_id:
-            print("[AUTH] Fingerprint employee does not match RFID employee")
-            self.failed_attempts += 1
-            self._log_failed_attempt(
-                rfid_status="RFID_OK",
-                fingerprint_status="FINGER_EMPLOYEE_MISMATCH",
-                failure_reason="Fingerprint employee does not match RFID employee"
-            )
-            return False
+                    if finger_data and len(finger_data) >= 4:
+                        finger_employee_id = int(finger_data[1])
+                        finger_position = finger_data[2]
+                        finger_accuracy = finger_data[3]
 
-        print(
-            f"[AUTH] Fingerprint employee matched: "
-            f"{finger_employee_id}, Position: {finger_position}, "
-            f"Accuracy: {finger_accuracy}"
-        )
+                        self.current_employee_id = finger_employee_id
+                        fingerprint_status = "FINGER_OK"
+                        fingerprint_ok = True
+
+                        print(
+                            f"[AUTH] Fingerprint employee identified: "
+                            f"{finger_employee_id}, Position: {finger_position}, "
+                            f"Accuracy: {finger_accuracy}"
+                        )
+                        break
+
+                self.failed_attempts += 1
+                print("[AUTH] Fingerprint attempt failed")
+
+                if self._is_total_attempts_exceeded(settings):
+                    break
+
+            if not fingerprint_ok:
+                self._log_failed_attempt(
+                    rfid_status=rfid_status,
+                    fingerprint_status="FINGER_FAILED",
+                    face_status=face_status,
+                    behavior_status=behavior_status,
+                    failure_reason="Fingerprint authentication failed"
+                )
+                return False
+
+        else:
+            print("[AUTH] Fingerprint step skipped by system settings")
+            self.current_employee_id = self._get_int_setting("DEFAULT_EMPLOYEE_ID", 1)
 
         # =========================
         # STEP 3 - FACE RECOGNITION
         # =========================
-        print("[AUTH] Step 3: Face Recognition")
-        face_ok, face_output = self._run_helper("auth_face_only.py")
+        if settings["require_face"]:
+            print("[AUTH] Step 3: Face Recognition")
 
-        if not face_ok:
-            print("[AUTH] Face recognition failed")
-            self.failed_attempts += 1
-            self._log_failed_attempt(
-                rfid_status="RFID_OK",
-                fingerprint_status="FINGER_OK",
-                face_status="FACE_FAILED",
-                failure_reason="Face recognition failed"
-            )
-            return False
+            face_ok = False
 
-        print("[AUTH] Face recognition stage finished")
+            for attempt in range(1, settings["max_face_attempts"] + 1):
+                print(f"[AUTH] Face recognition attempt {attempt}/{settings['max_face_attempts']}")
+
+                helper_ok, face_output = self._run_helper("auth_face_only.py")
+
+                if helper_ok:
+                    face_status = "FACE_OK"
+                    face_ok = True
+                    print("[AUTH] Face recognition stage finished")
+                    break
+
+                self.failed_attempts += 1
+                print("[AUTH] Face recognition attempt failed")
+
+                if self._is_total_attempts_exceeded(settings):
+                    break
+
+            if not face_ok:
+                self._log_failed_attempt(
+                    rfid_status=rfid_status,
+                    fingerprint_status=fingerprint_status,
+                    face_status="FACE_FAILED",
+                    behavior_status=behavior_status,
+                    failure_reason="Face recognition failed"
+                )
+                return False
+
+        else:
+            print("[AUTH] Face recognition step skipped by system settings")
 
         # =========================
         # STEP 4 - BEHAVIOR CHECK
         # =========================
-        print("[AUTH] Step 4: Dlib Behavior Check")
-        behavior_ok, behavior_output = self._run_helper("auth_behavior_only.py")
+        if settings["require_behavior"]:
+            print("[AUTH] Step 4: Dlib Behavior Check")
 
-        if not behavior_ok:
-            print("[AUTH] Behavior check danger detected")
-            self._send_whatsapp_alert_stub(
-                "Danger behavior detected during authentication"
-            )
+            behavior_ok = False
 
-            self.failed_attempts += 1
-            self._log_failed_attempt(
-                rfid_status="RFID_OK",
-                fingerprint_status="FINGER_OK",
-                face_status="FACE_OK",
-                behavior_status="BEHAVIOR_DANGER",
-                failure_reason="Danger behavior detected"
-            )
-            return False
+            for attempt in range(1, settings["max_behavior_attempts"] + 1):
+                print(f"[AUTH] Behavior attempt {attempt}/{settings['max_behavior_attempts']}")
 
-        behavior_status = "BEHAVIOR_UNKNOWN"
+                helper_ok, behavior_output = self._run_helper("auth_behavior_only.py")
 
-        if "BEHAVIOR_MEDIUM" in behavior_output:
-            behavior_status = "BEHAVIOR_MEDIUM"
-            print("[AUTH] Behavior check medium warning")
-            self._send_whatsapp_alert_stub(
-                "Medium suspicious behavior detected during authentication"
-            )
+                if helper_ok:
+                    if "BEHAVIOR_MEDIUM" in behavior_output:
+                        behavior_status = "BEHAVIOR_MEDIUM"
+                        behavior_ok = True
+                        print("[AUTH] Behavior check medium warning")
+                        self._send_whatsapp_alert_stub(
+                            "Medium suspicious behavior detected during authentication"
+                        )
+                        break
 
-        elif "BEHAVIOR_NORMAL" in behavior_output:
-            behavior_status = "BEHAVIOR_NORMAL"
-            print("[AUTH] Behavior check normal")
+                    if "BEHAVIOR_NORMAL" in behavior_output:
+                        behavior_status = "BEHAVIOR_NORMAL"
+                        behavior_ok = True
+                        print("[AUTH] Behavior check normal")
+                        break
+
+                self.failed_attempts += 1
+                behavior_status = "BEHAVIOR_DANGER"
+                print("[AUTH] Behavior check danger detected")
+
+                self._send_whatsapp_alert_stub(
+                    "Danger behavior detected during authentication"
+                )
+
+                if self._is_total_attempts_exceeded(settings):
+                    break
+
+            if not behavior_ok:
+                self._log_failed_attempt(
+                    rfid_status=rfid_status,
+                    fingerprint_status=fingerprint_status,
+                    face_status=face_status,
+                    behavior_status=behavior_status,
+                    failure_reason="Danger behavior detected"
+                )
+                return False
 
         else:
-            print("[AUTH] Behavior check returned unknown result")
-            self.failed_attempts += 1
-            self._log_failed_attempt(
-                rfid_status="RFID_OK",
-                fingerprint_status="FINGER_OK",
-                face_status="FACE_OK",
-                behavior_status="BEHAVIOR_UNKNOWN",
-                failure_reason="Behavior check returned unknown result"
-            )
-            return False
-
-        print("[AUTH] Behavior check stage finished")
+            print("[AUTH] Behavior analysis step skipped by system settings")
 
         self.current_access_session_id = start_access_session(
             employee_id=self.current_employee_id
@@ -248,9 +324,9 @@ class AuthenticationManager:
         log_authentication_attempt(
             employee_id=self.current_employee_id,
             access_session_id=self.current_access_session_id,
-            rfid_status="RFID_OK",
-            fingerprint_status="FINGER_OK",
-            face_status="FACE_OK",
+            rfid_status=rfid_status,
+            fingerprint_status=fingerprint_status,
+            face_status=face_status,
             behavior_status=behavior_status,
             final_result="ACCESS_GRANTED",
             failure_reason=None
