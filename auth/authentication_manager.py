@@ -138,6 +138,7 @@ class AuthenticationManager:
                             face_status=None, behavior_status=None,
                             failure_reason=None):
         create_authentication_attempt(
+            access_session_id=self.current_access_session_id,
             employee_id=self.current_employee_id,
             
             rfid_status=rfid_status,
@@ -410,6 +411,7 @@ class AuthenticationManager:
         )
 
         create_authentication_attempt(
+            access_session_id=self.current_access_session_id,
             employee_id=self.current_employee_id,
             
             rfid_status=rfid_status,
