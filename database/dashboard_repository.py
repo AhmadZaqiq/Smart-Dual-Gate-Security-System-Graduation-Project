@@ -8,8 +8,8 @@ def get_dashboard_summary():
             (SELECT COUNT(*) FROM Employee WHERE IsActive = 1 AND IsDeleted = 0) AS ActiveEmployees,
             (SELECT COUNT(*) FROM AccessSession WHERE FinalStatus = 'COMPLETED') AS CompletedSessions,
             (SELECT COUNT(*) FROM AccessSession WHERE FinalStatus = 'ACTIVE') AS ActiveSessions,
-            (SELECT COUNT(*) FROM AuthenticationAttempt WHERE FinalResult = 'SUCCESS') AS SuccessfulAuthentications,
-            (SELECT COUNT(*) FROM AuthenticationAttempt WHERE FinalResult = 'FAILED') AS FailedAuthentications,
+            (SELECT COUNT(*) FROM AuthenticationAttempt WHERE FinalResult = 'ACCESS_GRANTED') AS SuccessfulAuthentications,
+            (SELECT COUNT(*) FROM AuthenticationAttempt WHERE FinalResult = 'ACCESS_DENIED') AS FailedAuthentications,
             (SELECT COUNT(*) FROM SecurityEvent) AS SecurityEvents;
     """
 
@@ -24,7 +24,11 @@ def get_today_access_count():
     """
 
     result = execute_query_one(query)
-    return result["TodayAccessCount"] if result else 0
+
+    if result:
+        return result["TodayAccessCount"]
+
+    return 0
 
 
 def get_today_security_events_count():
@@ -35,7 +39,11 @@ def get_today_security_events_count():
     """
 
     result = execute_query_one(query)
-    return result["TodaySecurityEventsCount"] if result else 0
+
+    if result:
+        return result["TodaySecurityEventsCount"]
+
+    return 0
 
 
 def get_recent_activity(limit=20):
@@ -44,7 +52,7 @@ def get_recent_activity(limit=20):
             'ACCESS_SESSION' AS ActivityType,
             AccessSessionID AS RecordID,
             FinalStatus AS Title,
-            EntryTime AS CreationDate
+            EntryTime AS ActivityDate
         FROM AccessSession
 
         UNION ALL
@@ -53,7 +61,7 @@ def get_recent_activity(limit=20):
             'SECURITY_EVENT' AS ActivityType,
             SecurityEventID AS RecordID,
             EventType AS Title,
-            CreationDate
+            CreationDate AS ActivityDate
         FROM SecurityEvent
 
         UNION ALL
@@ -62,10 +70,10 @@ def get_recent_activity(limit=20):
             'AUTHENTICATION_ATTEMPT' AS ActivityType,
             AuthenticationAttemptID AS RecordID,
             FinalResult AS Title,
-            CreationDate
+            AttemptDate AS ActivityDate
         FROM AuthenticationAttempt
 
-        ORDER BY CreationDate DESC
+        ORDER BY ActivityDate DESC
         LIMIT ?;
     """
 
