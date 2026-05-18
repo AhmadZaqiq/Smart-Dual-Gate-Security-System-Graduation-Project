@@ -7,6 +7,10 @@ from hardware import indicators
 from ai import yolo_room_monitor
 from auth import authentication_manager
 from database import system_logger
+from database.employee_repository import (
+    finish_access_session,
+    add_security_event
+)
 from utils import notification_manager
 
 
@@ -162,6 +166,16 @@ class MantrapFSM:
             f"Invalid room count detected: {detected_count}"
         )
 
+        add_security_event(
+            event_type="INVALID_ROOM_COUNT",
+            severity="MEDIUM",
+            detected_persons_count=detected_count,
+            description=(
+                f"Invalid room count detected before authentication: "
+                f"{detected_count}"
+            )
+        )
+
         indicators.beep_alarm_level_1()
 
         self.warning_start_time = time.time()
@@ -187,6 +201,16 @@ class MantrapFSM:
         if elapsed_time >= 30:
             system_logger.log_security(
                 f"Danger state: invalid room count still detected: {detected_count}"
+            )
+
+            add_security_event(
+                event_type="SECURITY_LOCKDOWN",
+                severity="HIGH",
+                detected_persons_count=detected_count,
+                description=(
+                    "System lockdown triggered because invalid room "
+                    f"count remained: {detected_count}"
+                )
             )
 
             notification_manager.send_whatsapp_security_alert(
@@ -292,6 +316,13 @@ class MantrapFSM:
             >= settings.MAX_AUTH_ATTEMPTS
         ):
             system_logger.log_security("Maximum authentication attempts reached")
+
+            add_security_event(
+                event_type="MAX_AUTH_ATTEMPTS",
+                severity="HIGH",
+                description="Maximum authentication attempts reached"
+            )
+
             self.change_state(states.SECURITY_LOCKDOWN)
 
     def handle_wait_inner_button_confirm(self):
@@ -396,6 +427,22 @@ class MantrapFSM:
         time.sleep(1)
 
     def finish_successful_access(self):
+        access_session_id = (
+            authentication_manager.get_current_access_session_id()
+        )
+
+        if access_session_id:
+            finish_access_session(
+                access_session_id=access_session_id,
+                exit_method="INNER_DOOR_CLOSED",
+                final_status="COMPLETED",
+                notes="Access completed successfully"
+            )
+
+            system_logger.log_info(
+                f"Access session completed: {access_session_id}"
+            )
+
         authentication_manager.stop_authentication_modules()
         yolo_room_monitor.stop_room_monitor()
 

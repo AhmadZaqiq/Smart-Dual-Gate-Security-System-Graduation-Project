@@ -1,13 +1,18 @@
-from mfrc522 import MFRC522
+import sys
 import time
+from pathlib import Path
+
 import RPi.GPIO as GPIO
+from mfrc522 import MFRC522
+
+
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(PROJECT_DIR / "database"))
+
+from employee_repository import get_employee_by_rfid_uid
+
 
 GPIO.setwarnings(False)
-
-AUTHORIZED_RFID = [
-    682511166205,
-    151122205133
-]
 
 reader = MFRC522()
 
@@ -28,12 +33,14 @@ try:
                 print(f"RFID_UID:{uid}", flush=True)
                 print(f"RFID_ID:{card_id}", flush=True)
 
-                if card_id in AUTHORIZED_RFID:
-                    print("RFID_OK", flush=True)
+                employee = get_employee_by_rfid_uid(str(card_id))
+
+                if employee:
+                    print(f"RFID_OK:{employee['EmployeeID']}", flush=True)
                     exit(0)
-                else:
-                    print("RFID_DENIED", flush=True)
-                    exit(1)
+
+                print("RFID_DENIED", flush=True)
+                exit(1)
 
         time.sleep(0.2)
 
