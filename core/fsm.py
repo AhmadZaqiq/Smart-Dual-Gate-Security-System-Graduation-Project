@@ -7,10 +7,8 @@ from hardware import indicators
 from ai import yolo_room_monitor
 from auth import authentication_manager
 from database import system_logger
-from database.employee_repository import (
-    finish_access_session,
-    add_security_event
-)
+from database.access_session_repository import finish_access_session
+from database.security_event_repository import create_security_event
 from utils import notification_manager
 
 
@@ -166,7 +164,7 @@ class MantrapFSM:
             f"Invalid room count detected: {detected_count}"
         )
 
-        add_security_event(
+        create_security_event(
             event_type="INVALID_ROOM_COUNT",
             severity="MEDIUM",
             detected_persons_count=detected_count,
@@ -203,7 +201,7 @@ class MantrapFSM:
                 f"Danger state: invalid room count still detected: {detected_count}"
             )
 
-            add_security_event(
+            create_security_event(
                 event_type="SECURITY_LOCKDOWN",
                 severity="HIGH",
                 detected_persons_count=detected_count,
@@ -317,7 +315,7 @@ class MantrapFSM:
         ):
             system_logger.log_security("Maximum authentication attempts reached")
 
-            add_security_event(
+            create_security_event(
                 event_type="MAX_AUTH_ATTEMPTS",
                 severity="HIGH",
                 description="Maximum authentication attempts reached"

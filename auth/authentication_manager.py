@@ -7,10 +7,8 @@ from pathlib import Path
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_DIR / "database"))
 
-from employee_repository import (
-    log_authentication_attempt,
-    start_access_session
-)
+from authentication_attempt_repository import create_authentication_attempt
+from access_session_repository import start_access_session
 
 from system_setting_repository import get_setting_value
 
@@ -104,7 +102,7 @@ class AuthenticationManager:
     def _log_failed_attempt(self, rfid_status=None, fingerprint_status=None,
                             face_status=None, behavior_status=None,
                             failure_reason=None):
-        log_authentication_attempt(
+        create_authentication_attempt(
             employee_id=self.current_employee_id,
             access_session_id=self.current_access_session_id,
             rfid_status=rfid_status,
@@ -321,7 +319,7 @@ class AuthenticationManager:
             employee_id=self.current_employee_id
         )
 
-        log_authentication_attempt(
+        create_authentication_attempt(
             employee_id=self.current_employee_id,
             access_session_id=self.current_access_session_id,
             rfid_status=rfid_status,
