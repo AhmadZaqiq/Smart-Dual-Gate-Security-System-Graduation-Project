@@ -1,7 +1,4 @@
-import threading
-import time
 import subprocess
-import select
 import os
 import sys
 from pathlib import Path
@@ -22,12 +19,9 @@ class AuthenticationManager:
         self.auth_dir = os.path.dirname(os.path.abspath(__file__))
         self.failed_attempts = 0
         self.authentication_completed = False
-        self.cancel_requested = False
-        self.back_cancel_enabled = False
         self.current_employee_id = None
         self.current_access_session_id = None
         self.cancel_requested = False
-        self.back_cancel_enabled = False
 
     def start(self):
         print("[AUTH] Authentication modules started")
@@ -38,13 +32,9 @@ class AuthenticationManager:
     def reset_session(self):
         self.failed_attempts = 0
         self.authentication_completed = False
-        self.cancel_requested = False
-        self.back_cancel_enabled = False
         self.current_employee_id = None
         self.current_access_session_id = None
         self.cancel_requested = False
-        self.cancel_requested = False
-        self.back_cancel_enabled = False
         print("[AUTH] Authentication session reset")
 
     def get_failed_attempts(self):
@@ -88,41 +78,19 @@ class AuthenticationManager:
             ["python3", script_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1
+            text=True
         )
 
         output_lines = []
 
-        while True:
-            if self.cancel_requested:
-                print("[AUTH] Cancelling active authentication helper", flush=True)
-                process.kill()
-                process.wait()
-                return False, output_lines
+        for line in process.stdout:
+            clean_line = line.strip()
+            output_lines.append(clean_line)
+            print(f"[AUTH] {line}", end="")
 
-            ready, _, _ = select.select([process.stdout], [], [], 0.1)
-
-            if ready:
-                line = process.stdout.readline()
-
-                if line:
-                    clean_line = line.strip()
-                    output_lines.append(clean_line)
-                    print(f"[AUTH] {line}", end="")
-
-            if process.poll() is not None:
-                remaining_output = process.stdout.read()
-
-                if remaining_output:
-                    for line in remaining_output.splitlines():
-                        output_lines.append(line.strip())
-                        print(f"[AUTH] {line}")
-
-                break
+        process.wait()
 
         return process.returncode == 0, output_lines
-
 
     def _get_value_from_output(self, output_lines, prefix):
         for line in output_lines:
@@ -139,7 +107,7 @@ class AuthenticationManager:
                             failure_reason=None):
         create_authentication_attempt(
             employee_id=self.current_employee_id,
-            
+            access_session_id=self.current_access_session_id,
             rfid_status=rfid_status,
             fingerprint_status=fingerprint_status,
             face_status=face_status,
@@ -155,28 +123,40 @@ class AuthenticationManager:
     def is_cancel_requested(self):
         return self.cancel_requested
 
+    def _wait_for_back_cancel_after_failed_attempt(self, seconds=10):
+        print("[AUTH] BackPushButton enabled for cancel", flush=True)
+
+        import time
+        start_time = time.time()
+
+        while time.time() - start_time < seconds:
+            if devices.is_back_push_button_pressed():
+                self.cancel_requested = True
+                print("[AUTH] BACK_CANCEL_REQUESTED", flush=True)
+                return True
+
+            time.sleep(0.1)
+
+        return False
+
 
     def is_cancel_requested(self):
         return self.cancel_requested
 
-    def enable_back_cancel_after_failed_attempt(self):
-        if self.back_cancel_enabled:
-            return
+    def wait_for_back_cancel_after_failed_attempt(self, seconds=10):
+        print("[AUTH] BackPushButton enabled for cancel", flush=True)
 
-        self.back_cancel_enabled = True
-        print("[AUTH] AuthCancelButton enabled for cancel", flush=True)
+        start_time = time.time()
 
-        def watch_back_button():
-            while self.back_cancel_enabled and not self.cancel_requested:
-                if devices.is_auth_cancel_button_pressed():
-                    self.cancel_requested = True
-                    print("[AUTH] AUTH_CANCEL_REQUESTED", flush=True)
-                    break
+        while time.time() - start_time < seconds:
+            if devices.is_back_push_button_pressed():
+                self.cancel_requested = True
+                print("[AUTH] BACK_CANCEL_REQUESTED", flush=True)
+                return True
 
-                time.sleep(0.05)
+            time.sleep(0.1)
 
-        threading.Thread(target=watch_back_button, daemon=True).start()
-
+        return False
 
 
     def process_authentication(self):
@@ -217,16 +197,7 @@ class AuthenticationManager:
                         break
 
                 self.failed_attempts += 1
-
-                if self.cancel_requested:
-                    return False
-
                 print("[AUTH] RFID attempt failed")
-
-                self.enable_back_cancel_after_failed_attempt()
-
-                if self.cancel_requested:
-                    return False
 
                 if self._is_total_attempts_exceeded(settings):
                     break
@@ -276,17 +247,8 @@ class AuthenticationManager:
                         )
                         break
 
-                if self.cancel_requested:
-                    return False
-
                 self.failed_attempts += 1
-
                 print("[AUTH] Fingerprint attempt failed")
-
-                self.enable_back_cancel_after_failed_attempt()
-
-                if self.cancel_requested:
-                    return False
 
                 if self._is_total_attempts_exceeded(settings):
                     break
@@ -324,17 +286,8 @@ class AuthenticationManager:
                     print("[AUTH] Face recognition stage finished")
                     break
 
-                if self.cancel_requested:
-                    return False
-
                 self.failed_attempts += 1
-
                 print("[AUTH] Face recognition attempt failed")
-
-                self.enable_back_cancel_after_failed_attempt()
-
-                if self.cancel_requested:
-                    return False
 
                 if self._is_total_attempts_exceeded(settings):
                     break
@@ -411,7 +364,7 @@ class AuthenticationManager:
 
         create_authentication_attempt(
             employee_id=self.current_employee_id,
-            
+            access_session_id=self.current_access_session_id,
             rfid_status=rfid_status,
             fingerprint_status=fingerprint_status,
             face_status=face_status,

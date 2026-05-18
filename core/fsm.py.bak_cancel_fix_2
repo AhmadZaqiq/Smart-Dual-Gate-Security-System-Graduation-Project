@@ -306,22 +306,21 @@ class MantrapFSM:
             self.change_state(states.WAIT_INNER_BUTTON_CONFIRM)
             return
 
-        if authentication_manager.is_cancel_requested():
-            system_logger.log_info("Authentication cancelled by BackPushButton")
-            self.change_state(states.CANCEL_AND_EXIT)
-            return
-
         system_logger.log_warning(
             "Authentication failed. Back button is now enabled for cancel."
         )
 
         if authentication_manager.get_failed_attempts_count() >= settings.MAX_AUTH_ATTEMPTS:
             system_logger.log_security("Maximum authentication attempts reached")
+            add_security_event(
+                event_type="MAX_AUTH_ATTEMPTS",
+                severity="HIGH",
+                description="Maximum authentication attempts reached"
+            )
             self.change_state(states.SECURITY_LOCKDOWN)
             return
 
         self.change_state(states.AUTHENTICATION_FAILED_WAIT_BACK)
-
 
 
     def handle_authentication_failed_wait_back(self):
@@ -428,28 +427,9 @@ class MantrapFSM:
 
         system_logger.log_info("Outer door closed again")
 
-        # Full reset after cancel
-        authentication_manager.reset_authentication_session()
-        authentication_manager.stop_authentication_modules()
+        devices.lock_outer_solenoid()
 
-        yolo_room_monitor.stop_room_monitor()
-
-        time.sleep(2)
-
-        devices.lock_inner_solenoid()
-        devices.unlock_outer_solenoid()
-        devices.set_red_status()
-
-        # Reset FSM door tracking flags
-        self.outer_door_opened = False
-        self.outer_door_was_opened = False
-        self.outer_door_opened_once = False
-
-        system_logger.log_info("System returned to idle after cancel")
-
-        self.change_state(states.IDLE_OUTER_OPEN)
-
-
+        self.start_system()
 
     def handle_security_lockdown(self):
         authentication_manager.stop_authentication_modules()

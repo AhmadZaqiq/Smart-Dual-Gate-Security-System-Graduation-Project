@@ -428,22 +428,13 @@ class MantrapFSM:
 
         system_logger.log_info("Outer door closed again")
 
-        # Full reset after cancel
         authentication_manager.reset_authentication_session()
         authentication_manager.stop_authentication_modules()
-
         yolo_room_monitor.stop_room_monitor()
-
-        time.sleep(2)
 
         devices.lock_inner_solenoid()
         devices.unlock_outer_solenoid()
         devices.set_red_status()
-
-        # Reset FSM door tracking flags
-        self.outer_door_opened = False
-        self.outer_door_was_opened = False
-        self.outer_door_opened_once = False
 
         system_logger.log_info("System returned to idle after cancel")
 

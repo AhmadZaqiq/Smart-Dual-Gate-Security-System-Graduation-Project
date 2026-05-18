@@ -26,7 +26,8 @@ def initialize_outputs():
 def initialize_inputs():
     GPIO.setup(gpio_map.OUTER_PUSH_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.setup(gpio_map.INNER_PUSH_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(gpio_map.BACK_PUSH_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(gpio_map.BACK_PUSH_BUTTON_PIN, GPIO.IN)
+    
 
     GPIO.setup(gpio_map.INNER_LIMIT_SWITCH_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.setup(gpio_map.OUTER_LIMIT_SWITCH_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -162,3 +163,7 @@ def cleanup_gpio():
     turn_green_led_off()
     stop_buzzer()
     GPIO.cleanup()
+
+
+def is_auth_cancel_button_pressed():
+    return GPIO.input(gpio_map.OUTER_PUSH_BUTTON_PIN) == GPIO.LOW
