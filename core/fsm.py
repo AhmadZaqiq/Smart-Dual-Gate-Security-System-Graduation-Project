@@ -18,6 +18,7 @@ class MantrapFSM:
         self.current_state = states.SYSTEM_OFF
         self.warning_start_time = None
         self.outer_door_was_opened = False
+        self.wait_new_outer_open_after_cancel = False
 
     def change_state(self, new_state):
         system_logger.log_info(
@@ -119,6 +120,13 @@ class MantrapFSM:
         devices.unlock_outer_solenoid()
         devices.lock_inner_solenoid()
 
+        if getattr(self, "wait_new_outer_open_after_cancel", False):
+            if devices.is_outer_door_open():
+                self.wait_new_outer_open_after_cancel = False
+                self.outer_door_was_opened = True
+                system_logger.log_info("New outer door opening detected after cancel")
+            return
+
         if devices.is_outer_door_open():
             self.outer_door_was_opened = True
 
@@ -136,8 +144,7 @@ class MantrapFSM:
                 system_logger.log_info("Both doors closed successfully")
                 self.change_state(states.AI_START_DELAY)
 
-            else:
-                system_logger.log_warning("Both doors are not closed")
+
 
     def handle_ai_start_delay(self):
         system_logger.log_info("Waiting before YOLO room monitor starts")
@@ -437,13 +444,14 @@ class MantrapFSM:
         time.sleep(2)
 
         devices.lock_inner_solenoid()
-        devices.unlock_outer_solenoid()
+        devices.lock_outer_solenoid()
         devices.set_red_status()
 
         # Reset FSM door tracking flags
         self.outer_door_opened = False
         self.outer_door_was_opened = False
         self.outer_door_opened_once = False
+        self.wait_new_outer_open_after_cancel = True
 
         system_logger.log_info("System returned to idle after cancel")
 

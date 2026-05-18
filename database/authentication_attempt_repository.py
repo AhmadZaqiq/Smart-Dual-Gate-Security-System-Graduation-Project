@@ -57,7 +57,7 @@ def get_recent_authentication_attempts(limit=50):
             A.BehaviorStatus,
             A.FinalResult,
             A.FailureReason,
-            A.AttemptDate
+            A.CreationDate
         FROM AuthenticationAttempt A
         LEFT JOIN Employee E ON E.EmployeeID = A.EmployeeID
         LEFT JOIN Person P ON P.PersonID = E.PersonID

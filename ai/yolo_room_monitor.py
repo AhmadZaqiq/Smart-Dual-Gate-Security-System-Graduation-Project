@@ -74,8 +74,13 @@ def start_room_monitor():
 def stop_room_monitor():
     global monitor_running
     global camera
+    global latest_count
+    global latest_frame
 
     monitor_running = False
+
+    latest_count = 0
+    latest_frame = None
 
     time.sleep(1)
 
