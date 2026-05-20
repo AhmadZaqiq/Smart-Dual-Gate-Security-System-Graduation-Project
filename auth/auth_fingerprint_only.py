@@ -21,11 +21,14 @@ def restore_fingerprint_uart_pins():
     try:
         subprocess.run(["pinctrl", "set", "14", "a0", "pn"], check=False)
         subprocess.run(["pinctrl", "set", "15", "a0", "pn"], check=False)
+
+        subprocess.run(["stty", "-F", "/dev/ttyAMA0", "57600"], check=False)
+
         print("UART_PINS_RESTORED", flush=True)
-        time.sleep(1)
+        time.sleep(2)
+
     except Exception as error:
         print(f"UART_PINS_RESTORE_WARNING:{error}", flush=True)
-
 
 try:
     restore_fingerprint_uart_pins()
