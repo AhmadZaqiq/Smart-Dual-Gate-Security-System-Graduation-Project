@@ -2,6 +2,7 @@ from database.database_manager import execute_insert, execute_query
 
 
 def create_authentication_attempt(
+    access_session_id=None,
     employee_id=None,
     rfid_status="NOT_STARTED",
     fingerprint_status="NOT_STARTED",
@@ -13,6 +14,7 @@ def create_authentication_attempt(
     query = """
         INSERT INTO AuthenticationAttempt
         (
+            AccessSessionID,
             EmployeeID,
             RFIDStatus,
             FingerprintStatus,
@@ -22,12 +24,13 @@ def create_authentication_attempt(
             FailureReason,
             CreationDate
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'));
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'));
     """
 
     attempt_id = execute_insert(
         query,
         (
+            access_session_id,
             employee_id,
             rfid_status,
             fingerprint_status,
@@ -38,8 +41,7 @@ def create_authentication_attempt(
         )
     )
 
-    if attempt_id:
-        print(f"[DATABASE] Authentication attempt saved: {attempt_id}")
+    print(f"[DATABASE] Authentication attempt saved: {attempt_id}")
 
     return attempt_id
 
