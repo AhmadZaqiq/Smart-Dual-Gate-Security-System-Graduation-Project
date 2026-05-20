@@ -1,7 +1,31 @@
 venv/
+
 __pycache__/
 *.pyc
+*.pyo
+
 logs/
 *.log
+
 .DS_Store
 .env
+
+# Database runtime files
+*.db-shm
+*.db-wal
+
+# Temporary files
+*.tmp
+*.temp
+
+# VSCode
+.vscode/
+
+# JetBrains
+.idea/
+
+# Python cache
+.pytest_cache/
+
+# Linux
+Thumbs.db
