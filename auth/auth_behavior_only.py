@@ -1,11 +1,12 @@
 import cv2
 import dlib
-import time
 import math
-import numpy as np
-from collections import deque
-import sys
 import os
+import sys
+import time
+from collections import deque
+
+import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -14,8 +15,10 @@ try:
 except ImportError:
     FACE_CAM_DEVICE = "/dev/video0"
 
-
 PREDICTOR_PATH = "ai/models/shape_predictor_68_face_landmarks.dat"
+
+FRAME_WIDTH = 640
+FRAME_HEIGHT = 480
 
 ANALYSIS_SECONDS = 5.0
 
@@ -41,31 +44,37 @@ DANGER_SCORE = 6
 
 
 def distance(p1, p2):
-    return math.hypot(p1[0] - p2[0], p1[1] - p2[1])
+    return math.hypot(
+        p1[0] - p2[0],
+        p1[1] - p2[1]
+    )
 
 
 def get_points(landmarks):
     return {
-        i: (landmarks.part(i).x, landmarks.part(i).y)
-        for i in range(68)
+        index: (landmarks.part(index).x, landmarks.part(index).y)
+        for index in range(68)
     }
 
 
 def eye_aspect_ratio(points):
-    left_eye = [points[i] for i in [36, 37, 38, 39, 40, 41]]
-    right_eye = [points[i] for i in [42, 43, 44, 45, 46, 47]]
+    left_eye = [points[index] for index in [36, 37, 38, 39, 40, 41]]
+    right_eye = [points[index] for index in [42, 43, 44, 45, 46, 47]]
 
-    def calc_eye(eye):
-        a = distance(eye[1], eye[5])
-        b = distance(eye[2], eye[4])
-        c = distance(eye[0], eye[3])
+    def calculate_eye_ratio(eye):
+        vertical_1 = distance(eye[1], eye[5])
+        vertical_2 = distance(eye[2], eye[4])
+        horizontal = distance(eye[0], eye[3])
 
-        if c == 0:
+        if horizontal == 0:
             return 0
 
-        return (a + b) / (2.0 * c)
+        return (vertical_1 + vertical_2) / (2.0 * horizontal)
 
-    return (calc_eye(left_eye) + calc_eye(right_eye)) / 2.0
+    left_ratio = calculate_eye_ratio(left_eye)
+    right_ratio = calculate_eye_ratio(right_eye)
+
+    return (left_ratio + right_ratio) / 2.0
 
 
 def mouth_aspect_ratio(points):
@@ -107,7 +116,7 @@ def get_head_yaw(points, frame_width, frame_height):
         [0, 0, 1]
     ], dtype="double")
 
-    success, rotation_vector, translation_vector = cv2.solvePnP(
+    success, rotation_vector, _ = cv2.solvePnP(
         model_points,
         image_points,
         camera_matrix,
@@ -124,13 +133,7 @@ def get_head_yaw(points, frame_width, frame_height):
     return angles[1]
 
 
-def calculate_decision(
-    yaw,
-    avg_movement,
-    blink_count,
-    gasp_frames,
-    face_missing
-):
+def calculate_decision(yaw, avg_movement, blink_count, gasp_frames, face_missing):
     score = 0
     reasons = []
 
@@ -175,24 +178,75 @@ def calculate_decision(
     return "NORMAL", score, reasons
 
 
-def run_behavior_check():
-    print("BEHAVIOR_READY")
-
+def load_behavior_models():
     if not os.path.exists(PREDICTOR_PATH):
-        print("[BEHAVIOR] Predictor file not found")
-        print("BEHAVIOR_DANGER")
-        return False
+        print("[BEHAVIOR] Predictor file not found", flush=True)
+        return None, None
 
     detector = dlib.get_frontal_face_detector()
     predictor = dlib.shape_predictor(PREDICTOR_PATH)
 
-    cap = cv2.VideoCapture(FACE_CAM_DEVICE, cv2.CAP_V4L2)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    return detector, predictor
 
-    if not cap.isOpened():
-        print("[BEHAVIOR] Failed to open FaceCam")
-        print("BEHAVIOR_DANGER")
+
+def open_face_camera():
+    camera = cv2.VideoCapture(FACE_CAM_DEVICE, cv2.CAP_V4L2)
+    camera.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+
+    if not camera.isOpened():
+        print("[BEHAVIOR] Failed to open FaceCam", flush=True)
+        return None
+
+    print("[BEHAVIOR] FaceCam opened", flush=True)
+
+    return camera
+
+
+def get_largest_face(faces):
+    return max(
+        faces,
+        key=lambda face: (
+            face.right() - face.left()
+        ) * (
+            face.bottom() - face.top()
+        )
+    )
+
+
+def get_face_center(face):
+    return (
+        (face.left() + face.right()) // 2,
+        (face.top() + face.bottom()) // 2
+    )
+
+
+def print_behavior_result(status, score, blink_count, gasp_frames,
+                          max_mar, avg_movement, yaw, reasons):
+    print("========== BEHAVIOR RESULT ==========", flush=True)
+    print(f"[BEHAVIOR] Status: {status}", flush=True)
+    print(f"[BEHAVIOR] Score: {score}", flush=True)
+    print(f"[BEHAVIOR] Blinks: {blink_count}", flush=True)
+    print(f"[BEHAVIOR] Gasp Frames: {gasp_frames}", flush=True)
+    print(f"[BEHAVIOR] Max MAR: {max_mar:.2f}", flush=True)
+    print(f"[BEHAVIOR] Avg Movement: {avg_movement:.2f}", flush=True)
+    print(f"[BEHAVIOR] Yaw: {yaw:.2f}", flush=True)
+    print(f"[BEHAVIOR] Reasons: {reasons if reasons else ['OK']}", flush=True)
+
+
+def run_behavior_check():
+    print("BEHAVIOR_READY", flush=True)
+
+    detector, predictor = load_behavior_models()
+
+    if detector is None or predictor is None:
+        print("BEHAVIOR_DANGER", flush=True)
+        return False
+
+    camera = open_face_camera()
+
+    if camera is None:
+        print("BEHAVIOR_DANGER", flush=True)
         return False
 
     start_time = time.time()
@@ -200,6 +254,7 @@ def run_behavior_check():
 
     blink_count = 0
     eye_closed = False
+
     gasp_frames = 0
     max_mar = 0
 
@@ -212,37 +267,30 @@ def run_behavior_check():
 
     try:
         while time.time() - start_time < ANALYSIS_SECONDS:
-            ret, frame = cap.read()
+            success, frame = camera.read()
 
-            if not ret:
+            if not success or frame is None:
                 continue
 
             frame_height, frame_width = frame.shape[:2]
+
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             faces = detector(gray, 0)
 
-            now = time.time()
+            current_time = time.time()
 
             if len(faces) == 0:
                 if no_face_start is None:
-                    no_face_start = now
+                    no_face_start = current_time
 
-                if now - no_face_start >= NO_FACE_DANGER_SECONDS:
+                if current_time - no_face_start >= NO_FACE_DANGER_SECONDS:
                     face_missing = True
 
                 continue
 
             no_face_start = None
 
-            face = max(
-                faces,
-                key=lambda r: (
-                    r.right() - r.left()
-                ) * (
-                    r.bottom() - r.top()
-                )
-            )
-
+            face = get_largest_face(faces)
             landmarks = predictor(gray, face)
             points = get_points(landmarks)
 
@@ -250,16 +298,13 @@ def run_behavior_check():
             mar = mouth_aspect_ratio(points)
             yaw = get_head_yaw(points, frame_width, frame_height)
 
-            face_center = (
-                (face.left() + face.right()) // 2,
-                (face.top() + face.bottom()) // 2
-            )
+            face_center = get_face_center(face)
 
             if last_face_center is not None:
                 movement = distance(face_center, last_face_center)
                 movement_history.append(movement)
 
-                if len(movement_history) > 0:
+                if movement_history:
                     avg_movement = sum(movement_history) / len(movement_history)
 
             last_face_center = face_center
@@ -272,50 +317,59 @@ def run_behavior_check():
             else:
                 if eye_closed:
                     blink_count += 1
-                    print(f"[BEHAVIOR] Blink detected | Count: {blink_count}")
+                    print(
+                        f"[BEHAVIOR] Blink detected | Count: {blink_count}",
+                        flush=True
+                    )
+
                 eye_closed = False
 
             if mar >= GASP_MAR_THRESHOLD:
                 gasp_frames += 1
-                print(f"[BEHAVIOR] Gasp detected | MAR: {mar:.2f}")
+                print(
+                    f"[BEHAVIOR] Gasp detected | MAR: {mar:.2f}",
+                    flush=True
+                )
 
         status, score, reasons = calculate_decision(
-            yaw,
-            avg_movement,
-            blink_count,
-            gasp_frames,
-            face_missing
+            yaw=yaw,
+            avg_movement=avg_movement,
+            blink_count=blink_count,
+            gasp_frames=gasp_frames,
+            face_missing=face_missing
         )
 
-        print("========== BEHAVIOR RESULT ==========")
-        print(f"[BEHAVIOR] Status: {status}")
-        print(f"[BEHAVIOR] Score: {score}")
-        print(f"[BEHAVIOR] Blinks: {blink_count}")
-        print(f"[BEHAVIOR] Gasp Frames: {gasp_frames}")
-        print(f"[BEHAVIOR] Max MAR: {max_mar:.2f}")
-        print(f"[BEHAVIOR] Avg Movement: {avg_movement:.2f}")
-        print(f"[BEHAVIOR] Yaw: {yaw:.2f}")
-        print(f"[BEHAVIOR] Reasons: {reasons if reasons else ['OK']}")
+        print_behavior_result(
+            status=status,
+            score=score,
+            blink_count=blink_count,
+            gasp_frames=gasp_frames,
+            max_mar=max_mar,
+            avg_movement=avg_movement,
+            yaw=yaw,
+            reasons=reasons
+        )
 
         if status == "NORMAL":
-            print("BEHAVIOR_NORMAL")
+            print("BEHAVIOR_NORMAL", flush=True)
             return True
 
         if status == "MEDIUM":
-            print("BEHAVIOR_MEDIUM")
+            print("BEHAVIOR_MEDIUM", flush=True)
             return True
 
-        print("BEHAVIOR_DANGER")
+        print("BEHAVIOR_DANGER", flush=True)
         return False
 
     finally:
-        cap.release()
+        camera.release()
+        print("[BEHAVIOR] FaceCam released", flush=True)
 
 
 if __name__ == "__main__":
-    ok = run_behavior_check()
+    result = run_behavior_check()
 
-    if ok:
+    if result:
         sys.exit(0)
 
     sys.exit(1)

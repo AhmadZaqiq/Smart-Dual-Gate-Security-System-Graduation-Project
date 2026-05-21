@@ -24,7 +24,18 @@ def create_authentication_attempt(
             FailureReason,
             CreationDate
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'));
+        VALUES
+        (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            datetime('now')
+        );
     """
 
     attempt_id = execute_insert(
@@ -41,7 +52,7 @@ def create_authentication_attempt(
         )
     )
 
-    print(f"[DATABASE] Authentication attempt saved: {attempt_id}")
+    print(f"[DATABASE] Authentication attempt saved: {attempt_id}", flush=True)
 
     return attempt_id
 
@@ -52,7 +63,8 @@ def get_recent_authentication_attempts(limit=50):
             A.AuthenticationAttemptID,
             A.EmployeeID,
             E.EmployeeNumber,
-            P.FirstName || ' ' || P.SecondName || ' ' || P.ThirdName || ' ' || P.LastName AS FullName,
+            P.FirstName || ' ' || P.SecondName || ' ' ||
+            P.ThirdName || ' ' || P.LastName AS FullName,
             A.RFIDStatus,
             A.FingerprintStatus,
             A.FaceRecognitionStatus,

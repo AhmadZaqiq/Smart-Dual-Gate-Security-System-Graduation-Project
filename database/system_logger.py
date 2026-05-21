@@ -1,17 +1,32 @@
 from datetime import datetime
+from pathlib import Path
+
+LOGS_DIRECTORY = Path("logs")
+SYSTEM_LOG_FILE = LOGS_DIRECTORY / "system.log"
+
+
+def ensure_logs_directory_exists():
+    LOGS_DIRECTORY.mkdir(exist_ok=True)
 
 
 def get_current_time_string():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+def build_log_line(event_type, message):
+    current_time = get_current_time_string()
+
+    return f"[{current_time}] [{event_type}] {message}"
+
+
 def write_log(event_type, message):
-    time_string = get_current_time_string()
-    log_line = f"[{time_string}] [{event_type}] {message}"
+    ensure_logs_directory_exists()
 
-    print(log_line)
+    log_line = build_log_line(event_type, message)
 
-    with open("logs/system.log", "a") as log_file:
+    print(log_line, flush=True)
+
+    with open(SYSTEM_LOG_FILE, "a") as log_file:
         log_file.write(log_line + "\n")
 
 

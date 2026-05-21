@@ -1,4 +1,9 @@
-from database.database_manager import execute_insert, execute_non_query, execute_query, execute_query_one
+from database.database_manager import (
+    execute_insert,
+    execute_non_query,
+    execute_query,
+    execute_query_one
+)
 
 
 def create_person(first_name, second_name, third_name, last_name):
@@ -13,13 +18,30 @@ def create_person(first_name, second_name, third_name, last_name):
             LastUpdatedDate,
             IsDeleted
         )
-        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), 0);
+        VALUES
+        (
+            ?,
+            ?,
+            ?,
+            ?,
+            datetime('now'),
+            datetime('now'),
+            0
+        );
     """
 
-    person_id = execute_insert(query, (first_name, second_name, third_name, last_name))
+    person_id = execute_insert(
+        query,
+        (
+            first_name,
+            second_name,
+            third_name,
+            last_name
+        )
+    )
 
     if person_id:
-        print(f"[DATABASE] Person created successfully: {person_id}")
+        print(f"[DATABASE] Person created: {person_id}", flush=True)
 
     return person_id
 
@@ -32,7 +54,8 @@ def get_person_by_id(person_id):
             SecondName,
             ThirdName,
             LastName,
-            FirstName || ' ' || SecondName || ' ' || ThirdName || ' ' || LastName AS FullName,
+            FirstName || ' ' || SecondName || ' ' ||
+            ThirdName || ' ' || LastName AS FullName,
             CreationDate,
             LastUpdatedDate,
             IsDeleted
@@ -52,7 +75,8 @@ def get_all_people():
             SecondName,
             ThirdName,
             LastName,
-            FirstName || ' ' || SecondName || ' ' || ThirdName || ' ' || LastName AS FullName,
+            FirstName || ' ' || SecondName || ' ' ||
+            ThirdName || ' ' || LastName AS FullName,
             CreationDate,
             LastUpdatedDate,
             IsDeleted
@@ -64,7 +88,11 @@ def get_all_people():
     return execute_query(query)
 
 
-def update_person(person_id, first_name, second_name, third_name, last_name):
+def update_person(person_id,
+                  first_name,
+                  second_name,
+                  third_name,
+                  last_name):
     query = """
         UPDATE Person
         SET
@@ -77,10 +105,19 @@ def update_person(person_id, first_name, second_name, third_name, last_name):
           AND IsDeleted = 0;
     """
 
-    rows = execute_non_query(query, (first_name, second_name, third_name, last_name, person_id))
+    rows = execute_non_query(
+        query,
+        (
+            first_name,
+            second_name,
+            third_name,
+            last_name,
+            person_id
+        )
+    )
 
     if rows > 0:
-        print(f"[DATABASE] Person updated successfully: {person_id}")
+        print(f"[DATABASE] Person updated: {person_id}", flush=True)
 
     return rows > 0
 
@@ -97,6 +134,6 @@ def soft_delete_person(person_id):
     rows = execute_non_query(query, (person_id,))
 
     if rows > 0:
-        print(f"[DATABASE] Person deleted successfully: {person_id}")
+        print(f"[DATABASE] Person deleted: {person_id}", flush=True)
 
     return rows > 0

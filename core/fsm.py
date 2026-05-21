@@ -20,11 +20,24 @@ class MantrapFSM:
         self.outer_door_was_opened = False
         self.wait_new_outer_open_after_cancel = False
 
+        self.alarm_level_2_done = False
+        self.alarm_level_3_done = False
+        self.last_countdown_second = None
+
     def change_state(self, new_state):
         system_logger.log_info(
             f"State changed: {self.current_state} -> {new_state}"
         )
         self.current_state = new_state
+
+    def reset_warning_data(self):
+        self.warning_start_time = None
+        self.alarm_level_2_done = False
+        self.alarm_level_3_done = False
+        self.last_countdown_second = None
+
+    def reset_door_tracking(self):
+        self.outer_door_was_opened = False
 
     def start_system(self):
         devices.set_system_idle_outputs()
@@ -34,8 +47,8 @@ class MantrapFSM:
 
         indicators.stop_alarm()
 
-        self.warning_start_time = None
-        self.outer_door_was_opened = False
+        self.reset_warning_data()
+        self.reset_door_tracking()
 
         self.change_state(states.IDLE_OUTER_OPEN)
         system_logger.log_info("System started")
@@ -71,11 +84,10 @@ class MantrapFSM:
                 raise
 
     def run_current_state(self):
-
         if self.current_state == states.SYSTEM_OFF:
             return
 
-        elif self.current_state == states.IDLE_OUTER_OPEN:
+        if self.current_state == states.IDLE_OUTER_OPEN:
             self.handle_idle_outer_open()
 
         elif self.current_state == states.AI_START_DELAY:
@@ -116,11 +128,10 @@ class MantrapFSM:
 
     def handle_idle_outer_open(self):
         devices.set_red_status()
-
         devices.unlock_outer_solenoid()
         devices.lock_inner_solenoid()
 
-        if getattr(self, "wait_new_outer_open_after_cancel", False):
+        if self.wait_new_outer_open_after_cancel:
             if devices.is_outer_door_open():
                 self.wait_new_outer_open_after_cancel = False
                 self.outer_door_was_opened = True
@@ -130,21 +141,14 @@ class MantrapFSM:
         if devices.is_outer_door_open():
             self.outer_door_was_opened = True
 
-        if (
-            self.outer_door_was_opened
-            and devices.is_outer_door_closed()
-        ):
+        if self.outer_door_was_opened and devices.is_outer_door_closed():
             devices.lock_outer_solenoid()
-
             system_logger.log_info("Outer door closed after opening")
 
             if devices.are_both_doors_closed():
-                self.outer_door_was_opened = False
-
+                self.reset_door_tracking()
                 system_logger.log_info("Both doors closed successfully")
                 self.change_state(states.AI_START_DELAY)
-
-
 
     def handle_ai_start_delay(self):
         system_logger.log_info("Waiting before YOLO room monitor starts")
@@ -152,7 +156,6 @@ class MantrapFSM:
         time.sleep(settings.AI_START_DELAY)
 
         indicators.beep_short()
-
         yolo_room_monitor.start_room_monitor()
 
         system_logger.log_info("YOLO room monitor started")
@@ -167,6 +170,7 @@ class MantrapFSM:
 
         if detected_count == 1:
             system_logger.log_info("Exactly one figure detected")
+            self.reset_warning_data()
             self.change_state(states.AUTHENTICATION_READY)
             return
 
@@ -179,14 +183,16 @@ class MantrapFSM:
             severity="MEDIUM",
             detected_persons_count=detected_count,
             description=(
-                f"Invalid room count detected before authentication: "
+                "Invalid room count detected before authentication: "
                 f"{detected_count}"
             )
         )
 
         indicators.beep_alarm_level_1()
 
+        self.reset_warning_data()
         self.warning_start_time = time.time()
+
         self.change_state(states.MULTI_PERSON_WARNING)
 
     def handle_multi_person_warning(self):
@@ -195,6 +201,7 @@ class MantrapFSM:
         if detected_count == 1:
             system_logger.log_info("Room fixed, exactly one figure now")
             indicators.stop_alarm()
+            self.reset_warning_data()
             self.change_state(states.AUTHENTICATION_READY)
             return
 
@@ -207,43 +214,32 @@ class MantrapFSM:
         elapsed_time = time.time() - self.warning_start_time
 
         if elapsed_time >= 30:
-            system_logger.log_security(
-                f"Danger state: invalid room count still detected: {detected_count}"
-            )
-
-            create_security_event(
-                event_type="SECURITY_LOCKDOWN",
-                severity="HIGH",
-                detected_persons_count=detected_count,
-                description=(
-                    "System lockdown triggered because invalid room "
-                    f"count remained: {detected_count}"
-                )
-            )
-
-            notification_manager.send_whatsapp_security_alert(
-                f"Security alert: invalid room count detected: {detected_count}"
-            )
-
-            devices.lock_both_solenoids()
-            devices.set_red_status()
-            indicators.start_continuous_alarm()
-
-            self.change_state(states.SECURITY_LOCKDOWN)
+            self.trigger_security_lockdown_from_room_count(detected_count)
             return
 
-        if 10 <= elapsed_time < 11:
-            system_logger.log_warning("Alarm level 2 after 10 seconds")
-            indicators.beep_alarm_level_2()
-            return
-
-        if 20 <= elapsed_time < 21:
+        if elapsed_time >= 20 and not self.alarm_level_3_done:
+            self.alarm_level_3_done = True
             system_logger.log_warning("Alarm level 3 after 20 seconds")
             indicators.beep_alarm_level_3()
             return
 
-        if 25 <= elapsed_time < 30:
-            remaining_time = int(30 - elapsed_time)
+        if elapsed_time >= 10 and not self.alarm_level_2_done:
+            self.alarm_level_2_done = True
+            system_logger.log_warning("Alarm level 2 after 10 seconds")
+            indicators.beep_alarm_level_2()
+            return
+
+        if elapsed_time >= 25:
+            self.handle_lockdown_countdown(elapsed_time)
+            return
+
+        time.sleep(0.2)
+
+    def handle_lockdown_countdown(self, elapsed_time):
+        remaining_time = int(30 - elapsed_time)
+
+        if remaining_time != self.last_countdown_second:
+            self.last_countdown_second = remaining_time
 
             system_logger.log_warning(
                 f"Lockdown countdown: {remaining_time} seconds"
@@ -252,10 +248,31 @@ class MantrapFSM:
             devices.start_buzzer()
             time.sleep(0.15)
             devices.stop_buzzer()
-            time.sleep(0.85)
-            return
 
-        time.sleep(0.2)
+    def trigger_security_lockdown_from_room_count(self, detected_count):
+        system_logger.log_security(
+            f"Danger state: invalid room count still detected: {detected_count}"
+        )
+
+        create_security_event(
+            event_type="SECURITY_LOCKDOWN",
+            severity="HIGH",
+            detected_persons_count=detected_count,
+            description=(
+                "System lockdown triggered because invalid room count remained: "
+                f"{detected_count}"
+            )
+        )
+
+        notification_manager.send_whatsapp_security_alert(
+            f"Security alert: invalid room count detected: {detected_count}"
+        )
+
+        devices.lock_both_solenoids()
+        devices.set_red_status()
+        indicators.start_continuous_alarm()
+
+        self.change_state(states.SECURITY_LOCKDOWN)
 
     def handle_multi_person_exit_release(self):
         system_logger.log_info("Opening outer door for extra person exit")
@@ -266,7 +283,6 @@ class MantrapFSM:
         start_time = time.time()
 
         while time.time() - start_time < 10:
-
             if devices.is_outer_door_open():
                 system_logger.log_info("Outer door opened for exit")
 
@@ -277,8 +293,10 @@ class MantrapFSM:
 
                 devices.lock_outer_solenoid()
 
-                time.sleep(1)
+                yolo_room_monitor.reset_latest_detection()
+                time.sleep(2)
 
+                self.reset_warning_data()
                 self.change_state(states.PERSON_COUNTING)
                 return
 
@@ -287,7 +305,8 @@ class MantrapFSM:
         system_logger.log_warning("Exit release timeout")
 
         devices.lock_outer_solenoid()
-        self.start_system()
+        self.reset_warning_data()
+        self.change_state(states.PERSON_COUNTING)
 
     def handle_authentication_ready(self):
         yolo_room_monitor.stop_room_monitor()
@@ -314,12 +333,12 @@ class MantrapFSM:
             return
 
         if authentication_manager.is_cancel_requested():
-            system_logger.log_info("Authentication cancelled by BackPushButton")
+            system_logger.log_info("Authentication cancelled by user")
             self.change_state(states.CANCEL_AND_EXIT)
             return
 
         system_logger.log_warning(
-            "Authentication failed. Back button is now enabled for cancel."
+            "Authentication failed. Cancel button is now enabled."
         )
 
         if authentication_manager.get_failed_attempts_count() >= settings.MAX_AUTH_ATTEMPTS:
@@ -328,8 +347,6 @@ class MantrapFSM:
             return
 
         self.change_state(states.AUTHENTICATION_FAILED_WAIT_BACK)
-
-
 
     def handle_authentication_failed_wait_back(self):
         if not devices.are_both_doors_closed():
@@ -340,30 +357,26 @@ class MantrapFSM:
         devices.set_red_status()
 
         system_logger.log_warning(
-            "Waiting for BackPushButton. Press it to cancel and return."
+            "Waiting for cancel button. Press it to cancel and return."
         )
 
         start_time = time.time()
 
         while time.time() - start_time < 10:
-            if devices.is_back_push_button_pressed():
-                system_logger.log_info(
-                    "BackPushButton pressed after authentication failure"
-                )
+            if authentication_manager.is_cancel_requested():
+                system_logger.log_info("Authentication cancel requested")
                 self.change_state(states.CANCEL_AND_EXIT)
                 return
 
             time.sleep(0.1)
 
         system_logger.log_info(
-            "BackPushButton was not pressed. Retrying authentication."
+            "Cancel button was not pressed. Retrying authentication."
         )
 
         self.change_state(states.AUTHENTICATION_READY)
 
-
     def handle_wait_inner_button_confirm(self):
-
         if not devices.are_both_doors_closed():
             system_logger.log_security("Door opened before confirmation")
             self.change_state(states.SECURITY_LOCKDOWN)
@@ -374,7 +387,6 @@ class MantrapFSM:
         start_time = time.time()
 
         while time.time() - start_time < settings.INNER_CONFIRM_TIMEOUT:
-
             devices.turn_green_led_on()
             time.sleep(0.25)
 
@@ -390,7 +402,6 @@ class MantrapFSM:
         self.change_state(states.CANCEL_AND_EXIT)
 
     def handle_inner_door_unlocked(self):
-
         if not devices.is_outer_door_closed():
             system_logger.log_security("Outer door is not closed")
             self.change_state(states.SECURITY_LOCKDOWN)
@@ -435,10 +446,8 @@ class MantrapFSM:
 
         system_logger.log_info("Outer door closed again")
 
-        # Full reset after cancel
         authentication_manager.reset_authentication_session()
         authentication_manager.stop_authentication_modules()
-
         yolo_room_monitor.stop_room_monitor()
 
         time.sleep(2)
@@ -447,17 +456,14 @@ class MantrapFSM:
         devices.lock_outer_solenoid()
         devices.set_red_status()
 
-        # Reset FSM door tracking flags
-        self.outer_door_opened = False
-        self.outer_door_was_opened = False
-        self.outer_door_opened_once = False
+        self.reset_warning_data()
+        self.reset_door_tracking()
+
         self.wait_new_outer_open_after_cancel = True
 
         system_logger.log_info("System returned to idle after cancel")
 
         self.change_state(states.IDLE_OUTER_OPEN)
-
-
 
     def handle_security_lockdown(self):
         authentication_manager.stop_authentication_modules()
@@ -506,6 +512,9 @@ class MantrapFSM:
         devices.set_red_status()
         devices.unlock_outer_solenoid()
         devices.lock_inner_solenoid()
+
+        self.reset_warning_data()
+        self.reset_door_tracking()
 
         system_logger.log_access("Access finished successfully")
 

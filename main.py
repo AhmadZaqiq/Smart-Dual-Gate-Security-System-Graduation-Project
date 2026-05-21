@@ -1,11 +1,12 @@
-from hardware import devices
 from core.fsm import MantrapFSM
 from database import system_logger
+from hardware import devices
 
 
 def main():
     try:
         system_logger.log_info("Initializing Mantrap System")
+
         devices.initialize_gpio()
 
         mantrap_system = MantrapFSM()

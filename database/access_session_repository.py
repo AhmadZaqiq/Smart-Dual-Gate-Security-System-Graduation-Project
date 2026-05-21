@@ -1,4 +1,9 @@
-from database.database_manager import execute_insert, execute_non_query, execute_query, execute_query_one
+from database.database_manager import (
+    execute_insert,
+    execute_non_query,
+    execute_query,
+    execute_query_one
+)
 
 
 def start_access_session(employee_id, entry_method="FULL_AUTHENTICATION", notes=None):
@@ -13,23 +18,39 @@ def start_access_session(employee_id, entry_method="FULL_AUTHENTICATION", notes=
             CreationDate,
             LastUpdatedDate
         )
-        VALUES (?, datetime('now'), ?, 'ACTIVE', ?, datetime('now'), datetime('now'));
+        VALUES
+        (
+            ?,
+            datetime('now'),
+            ?,
+            'ACTIVE',
+            ?,
+            datetime('now'),
+            datetime('now')
+        );
     """
 
-    session_id = execute_insert(query, (employee_id, entry_method, notes))
+    session_id = execute_insert(
+        query,
+        (employee_id, entry_method, notes)
+    )
 
     if session_id:
-        print(f"[DATABASE] Access session started: {session_id}")
+        print(f"[DATABASE] Access session started: {session_id}", flush=True)
 
     return session_id
 
 
-def finish_access_session(access_session_id, final_status="COMPLETED", exit_method="INNER_DOOR_CLOSED", notes=None):
+def finish_access_session(access_session_id, final_status="COMPLETED",
+                          exit_method="INNER_DOOR_CLOSED", notes=None):
     query = """
         UPDATE AccessSession
         SET
             ExitTime = datetime('now'),
-            SessionDurationSeconds = CAST((julianday(datetime('now')) - julianday(EntryTime)) * 86400 AS INTEGER),
+            SessionDurationSeconds = CAST(
+                (julianday(datetime('now')) - julianday(EntryTime)) * 86400
+                AS INTEGER
+            ),
             FinalStatus = ?,
             ExitMethod = ?,
             Notes = COALESCE(?, Notes),
@@ -37,10 +58,13 @@ def finish_access_session(access_session_id, final_status="COMPLETED", exit_meth
         WHERE AccessSessionID = ?;
     """
 
-    rows = execute_non_query(query, (final_status, exit_method, notes, access_session_id))
+    rows = execute_non_query(
+        query,
+        (final_status, exit_method, notes, access_session_id)
+    )
 
     if rows > 0:
-        print(f"[DATABASE] Access session finished: {access_session_id}")
+        print(f"[DATABASE] Access session finished: {access_session_id}", flush=True)
 
     return rows > 0
 
@@ -51,7 +75,8 @@ def get_access_session_by_id(access_session_id):
             S.AccessSessionID,
             S.EmployeeID,
             E.EmployeeNumber,
-            P.FirstName || ' ' || P.SecondName || ' ' || P.ThirdName || ' ' || P.LastName AS FullName,
+            P.FirstName || ' ' || P.SecondName || ' ' ||
+            P.ThirdName || ' ' || P.LastName AS FullName,
             S.EntryTime,
             S.ExitTime,
             S.SessionDurationSeconds,
@@ -74,7 +99,8 @@ def get_recent_access_sessions(limit=50):
             S.AccessSessionID,
             S.EmployeeID,
             E.EmployeeNumber,
-            P.FirstName || ' ' || P.SecondName || ' ' || P.ThirdName || ' ' || P.LastName AS FullName,
+            P.FirstName || ' ' || P.SecondName || ' ' ||
+            P.ThirdName || ' ' || P.LastName AS FullName,
             S.EntryTime,
             S.ExitTime,
             S.SessionDurationSeconds,

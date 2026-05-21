@@ -1,7 +1,13 @@
-from database.database_manager import execute_insert, execute_query
+from database.database_manager import (
+    execute_insert,
+    execute_query
+)
 
 
-def create_security_event(event_type, severity="LOW", detected_persons_count=None, description=None, employee_id=None):
+def create_security_event(event_type, severity="LOW",
+                          detected_persons_count=None,
+                          description=None,
+                          employee_id=None):
     query = """
         INSERT INTO SecurityEvent
         (
@@ -12,7 +18,15 @@ def create_security_event(event_type, severity="LOW", detected_persons_count=Non
             Description,
             CreationDate
         )
-        VALUES (?, ?, ?, ?, ?, datetime('now'));
+        VALUES
+        (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            datetime('now')
+        );
     """
 
     event_id = execute_insert(
@@ -27,7 +41,7 @@ def create_security_event(event_type, severity="LOW", detected_persons_count=Non
     )
 
     if event_id:
-        print(f"[DATABASE] Security event saved: {event_id}")
+        print(f"[DATABASE] Security event saved: {event_id}", flush=True)
 
     return event_id
 
@@ -38,7 +52,8 @@ def get_recent_security_events(limit=50):
             SE.SecurityEventID,
             SE.EmployeeID,
             E.EmployeeNumber,
-            P.FirstName || ' ' || P.SecondName || ' ' || P.ThirdName || ' ' || P.LastName AS FullName,
+            P.FirstName || ' ' || P.SecondName || ' ' ||
+            P.ThirdName || ' ' || P.LastName AS FullName,
             SE.EventType,
             SE.Severity,
             SE.DetectedPersonsCount,

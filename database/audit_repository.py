@@ -1,7 +1,16 @@
-from database.database_manager import execute_insert, execute_query
+from database.database_manager import (
+    execute_insert,
+    execute_query
+)
 
 
-def create_audit(admin_user_id, action_type, table_name=None, record_id=None, old_value=None, new_value=None, description=None):
+def create_audit(admin_user_id,
+                 action_type,
+                 table_name=None,
+                 record_id=None,
+                 old_value=None,
+                 new_value=None,
+                 description=None):
     query = """
         INSERT INTO Audit
         (
@@ -14,7 +23,17 @@ def create_audit(admin_user_id, action_type, table_name=None, record_id=None, ol
             Description,
             CreationDate
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'));
+        VALUES
+        (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            datetime('now')
+        );
     """
 
     audit_id = execute_insert(
@@ -31,7 +50,7 @@ def create_audit(admin_user_id, action_type, table_name=None, record_id=None, ol
     )
 
     if audit_id:
-        print(f"[DATABASE] Audit saved: {audit_id}")
+        print(f"[DATABASE] Audit saved: {audit_id}", flush=True)
 
     return audit_id
 
@@ -42,7 +61,8 @@ def get_recent_audits(limit=50):
             AU.AuditID,
             AU.AdminUserID,
             AD.UserName,
-            P.FirstName || ' ' || P.SecondName || ' ' || P.ThirdName || ' ' || P.LastName AS AdminName,
+            P.FirstName || ' ' || P.SecondName || ' ' ||
+            P.ThirdName || ' ' || P.LastName AS AdminName,
             AU.ActionType,
             AU.TableName,
             AU.RecordID,
@@ -51,8 +71,10 @@ def get_recent_audits(limit=50):
             AU.Description,
             AU.CreationDate
         FROM Audit AU
-        LEFT JOIN AdminUser AD ON AD.AdminUserID = AU.AdminUserID
-        LEFT JOIN Person P ON P.PersonID = AD.PersonID
+        LEFT JOIN AdminUser AD
+            ON AD.AdminUserID = AU.AdminUserID
+        LEFT JOIN Person P
+            ON P.PersonID = AD.PersonID
         ORDER BY AU.AuditID DESC
         LIMIT ?;
     """

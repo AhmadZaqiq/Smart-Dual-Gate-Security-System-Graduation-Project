@@ -1,11 +1,12 @@
-import warnings
-warnings.filterwarnings("ignore")
-
-import cv2
-import face_recognition
 import os
 import sys
 import time
+import warnings
+
+import cv2
+import face_recognition
+
+warnings.filterwarnings("ignore")
 
 REFERENCE_IMAGE = os.path.expanduser(
     "~/mantrap_project/auth/face_data/reference_face.jpg"
@@ -13,65 +14,140 @@ REFERENCE_IMAGE = os.path.expanduser(
 
 FACE_CAM_DEVICE = 0
 
-print("FACE_READY", flush=True)
+FRAME_SCALE = 0.5
+FACE_TOLERANCE = 0.5
 
-if not os.path.exists(REFERENCE_IMAGE):
-    print("FACE_FAIL", flush=True)
-    sys.exit(1)
+MAX_FRAMES_TO_SCAN = 40
+CAMERA_WARMUP_DELAY = 1
 
-reference_image = face_recognition.load_image_file(REFERENCE_IMAGE)
-reference_encodings = face_recognition.face_encodings(reference_image)
 
-if len(reference_encodings) == 0:
-    print("FACE_FAIL", flush=True)
-    sys.exit(1)
+def load_reference_encoding():
+    if not os.path.exists(REFERENCE_IMAGE):
+        print("FACE_REFERENCE_NOT_FOUND", flush=True)
+        return None
 
-reference_encoding = reference_encodings[0]
+    reference_image = face_recognition.load_image_file(REFERENCE_IMAGE)
 
-cap = cv2.VideoCapture(FACE_CAM_DEVICE, cv2.CAP_V4L2)
+    reference_encodings = face_recognition.face_encodings(reference_image)
 
-if not cap.isOpened():
-    print("FACE_FAIL", flush=True)
-    sys.exit(1)
+    if len(reference_encodings) == 0:
+        print("FACE_REFERENCE_ENCODING_FAILED", flush=True)
+        return None
 
-time.sleep(1)
+    print("FACE_REFERENCE_READY", flush=True)
 
-matched = False
+    return reference_encodings[0]
 
-for _ in range(40):
-    ret, frame = cap.read()
 
-    if not ret or frame is None:
-        continue
+def open_camera():
+    print("FACE_OPENING_CAMERA", flush=True)
 
-    small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-    rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+    camera = cv2.VideoCapture(FACE_CAM_DEVICE, cv2.CAP_V4L2)
 
-    face_locations = face_recognition.face_locations(rgb_frame, model="hog")
+    if not camera.isOpened():
+        print("FACE_CAMERA_OPEN_FAILED", flush=True)
+        return None
+
+    time.sleep(CAMERA_WARMUP_DELAY)
+
+    print("FACE_CAMERA_READY", flush=True)
+
+    return camera
+
+
+def process_frame(frame):
+    small_frame = cv2.resize(
+        frame,
+        (0, 0),
+        fx=FRAME_SCALE,
+        fy=FRAME_SCALE
+    )
+
+    rgb_frame = cv2.cvtColor(
+        small_frame,
+        cv2.COLOR_BGR2RGB
+    )
+
+    face_locations = face_recognition.face_locations(
+        rgb_frame,
+        model="hog"
+    )
+
     face_encodings = face_recognition.face_encodings(
         rgb_frame,
         face_locations
     )
 
-    for face_encoding in face_encodings:
-        match = face_recognition.compare_faces(
-            [reference_encoding],
-            face_encoding,
-            tolerance=0.5
-        )[0]
+    return face_encodings
 
-        if match:
-            matched = True
-            break
+
+def is_face_match(reference_encoding, face_encoding):
+    return face_recognition.compare_faces(
+        [reference_encoding],
+        face_encoding,
+        tolerance=FACE_TOLERANCE
+    )[0]
+
+
+def cleanup_camera(camera):
+    if camera is not None:
+        camera.release()
+
+    print("FACE_CAMERA_RELEASED", flush=True)
+
+
+def main():
+    print("FACE_READY", flush=True)
+
+    reference_encoding = load_reference_encoding()
+
+    if reference_encoding is None:
+        print("FACE_FAIL", flush=True)
+        exit(1)
+
+    camera = open_camera()
+
+    if camera is None:
+        print("FACE_FAIL", flush=True)
+        exit(1)
+
+    matched = False
+
+    try:
+        for frame_number in range(MAX_FRAMES_TO_SCAN):
+            success, frame = camera.read()
+
+            if not success or frame is None:
+                print(
+                    f"FACE_FRAME_READ_FAILED:{frame_number}",
+                    flush=True
+                )
+                continue
+
+            face_encodings = process_frame(frame)
+
+            if len(face_encodings) == 0:
+                continue
+
+            for face_encoding in face_encodings:
+                if is_face_match(reference_encoding, face_encoding):
+                    matched = True
+                    print("FACE_MATCH_FOUND", flush=True)
+                    break
+
+            if matched:
+                break
+
+    finally:
+        cleanup_camera(camera)
 
     if matched:
-        break
+        print("FACE_OK", flush=True)
+        exit(0)
 
-cap.release()
+    print("FACE_FAIL", flush=True)
+    exit(1)
 
-if matched:
-    print("FACE_OK", flush=True)
-    sys.exit(0)
 
-print("FACE_FAIL", flush=True)
-sys.exit(1)
+if __name__ == "__main__":
+    main()

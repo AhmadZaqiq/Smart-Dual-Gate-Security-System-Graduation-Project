@@ -1,4 +1,9 @@
-from database.database_manager import execute_insert, execute_non_query, execute_query, execute_query_one
+from database.database_manager import (
+    execute_insert,
+    execute_non_query,
+    execute_query,
+    execute_query_one
+)
 
 
 def create_admin_user(person_id, username, email, password_hash, is_active=1):
@@ -14,13 +19,32 @@ def create_admin_user(person_id, username, email, password_hash, is_active=1):
             CreationDate,
             LastUpdatedDate
         )
-        VALUES (?, ?, ?, ?, ?, 0, datetime('now'), datetime('now'));
+        VALUES
+        (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            0,
+            datetime('now'),
+            datetime('now')
+        );
     """
 
-    admin_id = execute_insert(query, (person_id, username, email, password_hash, is_active))
+    admin_id = execute_insert(
+        query,
+        (
+            person_id,
+            username,
+            email,
+            password_hash,
+            is_active
+        )
+    )
 
     if admin_id:
-        print(f"[DATABASE] Admin user created successfully: {admin_id}")
+        print(f"[DATABASE] Admin user created: {admin_id}", flush=True)
 
     return admin_id
 
@@ -34,9 +58,11 @@ def get_admin_by_id(admin_user_id):
             A.Email,
             A.PasswordHash,
             A.IsActive,
-            P.FirstName || ' ' || P.SecondName || ' ' || P.ThirdName || ' ' || P.LastName AS FullName
+            P.FirstName || ' ' || P.SecondName || ' ' ||
+            P.ThirdName || ' ' || P.LastName AS FullName
         FROM AdminUser A
-        INNER JOIN Person P ON P.PersonID = A.PersonID
+        INNER JOIN Person P
+            ON P.PersonID = A.PersonID
         WHERE A.AdminUserID = ?
           AND A.IsDeleted = 0
           AND P.IsDeleted = 0;
@@ -54,9 +80,11 @@ def get_admin_by_username(username):
             A.Email,
             A.PasswordHash,
             A.IsActive,
-            P.FirstName || ' ' || P.SecondName || ' ' || P.ThirdName || ' ' || P.LastName AS FullName
+            P.FirstName || ' ' || P.SecondName || ' ' ||
+            P.ThirdName || ' ' || P.LastName AS FullName
         FROM AdminUser A
-        INNER JOIN Person P ON P.PersonID = A.PersonID
+        INNER JOIN Person P
+            ON P.PersonID = A.PersonID
         WHERE A.UserName = ?
           AND A.IsDeleted = 0
           AND P.IsDeleted = 0;
@@ -74,9 +102,11 @@ def get_admin_by_email(email):
             A.Email,
             A.PasswordHash,
             A.IsActive,
-            P.FirstName || ' ' || P.SecondName || ' ' || P.ThirdName || ' ' || P.LastName AS FullName
+            P.FirstName || ' ' || P.SecondName || ' ' ||
+            P.ThirdName || ' ' || P.LastName AS FullName
         FROM AdminUser A
-        INNER JOIN Person P ON P.PersonID = A.PersonID
+        INNER JOIN Person P
+            ON P.PersonID = A.PersonID
         WHERE A.Email = ?
           AND A.IsDeleted = 0
           AND P.IsDeleted = 0;
@@ -93,11 +123,13 @@ def get_all_admin_users():
             A.UserName,
             A.Email,
             A.IsActive,
-            P.FirstName || ' ' || P.SecondName || ' ' || P.ThirdName || ' ' || P.LastName AS FullName,
+            P.FirstName || ' ' || P.SecondName || ' ' ||
+            P.ThirdName || ' ' || P.LastName AS FullName,
             A.CreationDate,
             A.LastUpdatedDate
         FROM AdminUser A
-        INNER JOIN Person P ON P.PersonID = A.PersonID
+        INNER JOIN Person P
+            ON P.PersonID = A.PersonID
         WHERE A.IsDeleted = 0
           AND P.IsDeleted = 0
         ORDER BY A.AdminUserID DESC;
@@ -118,10 +150,18 @@ def update_admin_user(admin_user_id, username, email, is_active):
           AND IsDeleted = 0;
     """
 
-    rows = execute_non_query(query, (username, email, is_active, admin_user_id))
+    rows = execute_non_query(
+        query,
+        (
+            username,
+            email,
+            is_active,
+            admin_user_id
+        )
+    )
 
     if rows > 0:
-        print(f"[DATABASE] Admin user updated successfully: {admin_user_id}")
+        print(f"[DATABASE] Admin user updated: {admin_user_id}", flush=True)
 
     return rows > 0
 
@@ -136,20 +176,18 @@ def update_admin_password(admin_user_id, password_hash):
           AND IsDeleted = 0;
     """
 
-    rows = execute_non_query(query, (password_hash, admin_user_id))
+    rows = execute_non_query(
+        query,
+        (
+            password_hash,
+            admin_user_id
+        )
+    )
 
     if rows > 0:
-        print(f"[DATABASE] Admin password updated successfully: {admin_user_id}")
+        print(f"[DATABASE] Admin password updated: {admin_user_id}", flush=True)
 
     return rows > 0
-
-
-def activate_admin_user(admin_user_id):
-    return set_admin_active_status(admin_user_id, 1)
-
-
-def deactivate_admin_user(admin_user_id):
-    return set_admin_active_status(admin_user_id, 0)
 
 
 def set_admin_active_status(admin_user_id, is_active):
@@ -162,12 +200,29 @@ def set_admin_active_status(admin_user_id, is_active):
           AND IsDeleted = 0;
     """
 
-    rows = execute_non_query(query, (is_active, admin_user_id))
+    rows = execute_non_query(
+        query,
+        (
+            is_active,
+            admin_user_id
+        )
+    )
 
     if rows > 0:
-        print(f"[DATABASE] Admin active status changed: {admin_user_id}")
+        print(
+            f"[DATABASE] Admin active status changed: {admin_user_id}",
+            flush=True
+        )
 
     return rows > 0
+
+
+def activate_admin_user(admin_user_id):
+    return set_admin_active_status(admin_user_id, 1)
+
+
+def deactivate_admin_user(admin_user_id):
+    return set_admin_active_status(admin_user_id, 0)
 
 
 def soft_delete_admin_user(admin_user_id):
@@ -182,6 +237,6 @@ def soft_delete_admin_user(admin_user_id):
     rows = execute_non_query(query, (admin_user_id,))
 
     if rows > 0:
-        print(f"[DATABASE] Admin user deleted successfully: {admin_user_id}")
+        print(f"[DATABASE] Admin user deleted: {admin_user_id}", flush=True)
 
     return rows > 0

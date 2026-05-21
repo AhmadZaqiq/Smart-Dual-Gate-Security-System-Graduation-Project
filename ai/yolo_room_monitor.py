@@ -1,12 +1,21 @@
 import cv2
 import time
 import threading
+from collections import deque
 from flask import Flask, Response
 from ultralytics import YOLO
 
 MODEL_PATH = "ai/models/human_figure_yolo.pt"
 CAMERA_PATH = "/dev/video2"
 CONFIDENCE_THRESHOLD = 0.50
+
+FRAME_WIDTH = 640
+FRAME_HEIGHT = 480
+YOLO_IMAGE_SIZE = 320
+JPEG_QUALITY = 70
+
+STREAM_HOST = "0.0.0.0"
+STREAM_PORT = 5000
 
 app = Flask(__name__)
 
@@ -18,6 +27,7 @@ flask_server_started = False
 
 latest_count = 0
 latest_frame = None
+recent_counts = deque(maxlen=15)
 
 lock = threading.Lock()
 
@@ -26,18 +36,52 @@ def load_model():
     global model
 
     if model is None:
-        print("[AI] Loading YOLO model...")
+        print("[AI] Loading YOLO model...", flush=True)
         model = YOLO(MODEL_PATH)
-        print("[AI] YOLO model loaded")
+        print("[AI] YOLO model loaded", flush=True)
 
 
 def open_camera():
     global camera
 
-    if camera is None:
-        camera = cv2.VideoCapture(CAMERA_PATH, cv2.CAP_V4L2)
-        camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    if camera is not None and camera.isOpened():
+        return True
+
+    print(f"[AI] Opening InnerCam: {CAMERA_PATH}", flush=True)
+
+    camera = cv2.VideoCapture(CAMERA_PATH, cv2.CAP_V4L2)
+    camera.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+
+    time.sleep(1)
+
+    if not camera.isOpened():
+        print("[AI] Failed to open InnerCam", flush=True)
+        camera = None
+        return False
+
+    print("[AI] InnerCam opened successfully", flush=True)
+    return True
+
+
+def release_camera():
+    global camera
+
+    if camera is not None:
+        camera.release()
+        camera = None
+        print("[AI] InnerCam released", flush=True)
+
+
+def reset_latest_detection():
+    global latest_count
+    global latest_frame
+    global recent_counts
+
+    with lock:
+        latest_count = 0
+        latest_frame = None
+        recent_counts.clear()
 
 
 def start_room_monitor():
@@ -47,8 +91,11 @@ def start_room_monitor():
     if monitor_running:
         return
 
+    reset_latest_detection()
     load_model()
-    open_camera()
+
+    if not open_camera():
+        return
 
     monitor_running = True
 
@@ -59,68 +106,74 @@ def start_room_monitor():
     monitor_thread.start()
 
     if not flask_server_started:
+        flask_server_started = True
+
         flask_thread = threading.Thread(
             target=start_flask_server,
             daemon=True
         )
         flask_thread.start()
 
-        flask_server_started = True
-
-    print("[AI] YOLO room monitor started")
-    print("[AI] Open stream: http://192.168.1.28:5000")
+    print("[AI] YOLO room monitor started", flush=True)
+    print("[AI] Open stream: http://192.168.1.28:5000", flush=True)
 
 
 def stop_room_monitor():
     global monitor_running
-    global camera
-    global latest_count
-    global latest_frame
 
     monitor_running = False
 
-    latest_count = 0
-    latest_frame = None
+    time.sleep(0.3)
 
-    time.sleep(1)
+    release_camera()
+    reset_latest_detection()
 
-    if camera is not None:
-        camera.release()
-        camera = None
-
-    cv2.destroyAllWindows()
-
-    print("[AI] YOLO room monitor stopped")
+    print("[AI] YOLO room monitor stopped", flush=True)
 
 
 def get_detected_count():
-    return latest_count
+    with lock:
+        if len(recent_counts) == 0:
+            return latest_count
+
+        return max(recent_counts)
+
+
+def get_latest_detected_count():
+    with lock:
+        return latest_count
 
 
 def is_exactly_one_detected():
-    return latest_count == 1
+    return get_detected_count() == 1
 
 
 def is_invalid_count_detected():
-    return latest_count != 1
+    return get_detected_count() != 1
 
 
 def room_monitor_loop():
     global latest_count
     global latest_frame
 
+    print("[AI] YOLO monitor loop started", flush=True)
+
     while monitor_running:
+        if camera is None:
+            time.sleep(0.2)
+            continue
+
         success, frame = camera.read()
 
         if not success:
-            print("[AI] Failed to read InnerCam frame")
+            print("[AI] Failed to read InnerCam frame", flush=True)
             time.sleep(0.2)
             continue
 
         results = model(
             frame,
             conf=CONFIDENCE_THRESHOLD,
-            imgsz=320,
+            imgsz=YOLO_IMAGE_SIZE,
             verbose=False
         )
 
@@ -139,9 +192,12 @@ def room_monitor_loop():
 
         with lock:
             latest_count = count
+            recent_counts.append(count)
             latest_frame = annotated_frame.copy()
 
         time.sleep(0.05)
+
+    print("[AI] YOLO monitor loop stopped", flush=True)
 
 
 def generate_frames():
@@ -153,13 +209,13 @@ def generate_frames():
             time.sleep(0.1)
             continue
 
-        ret, buffer = cv2.imencode(
+        success, buffer = cv2.imencode(
             ".jpg",
             frame,
-            [cv2.IMWRITE_JPEG_QUALITY, 70]
+            [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY]
         )
 
-        if not ret:
+        if not success:
             continue
 
         yield (
@@ -196,8 +252,8 @@ def video():
 
 def start_flask_server():
     app.run(
-        host="0.0.0.0",
-        port=5000,
+        host=STREAM_HOST,
+        port=STREAM_PORT,
         debug=False,
         threaded=True,
         use_reloader=False

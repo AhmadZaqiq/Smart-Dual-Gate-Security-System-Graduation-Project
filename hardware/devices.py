@@ -1,7 +1,12 @@
 import RPi.GPIO as GPIO
+
 from config import settings
 from hardware import gpio_map
 
+
+# =========================
+# GPIO Initialization
+# =========================
 
 def initialize_gpio():
     GPIO.setmode(GPIO.BCM)
@@ -24,18 +29,54 @@ def initialize_outputs():
 
 
 def initialize_inputs():
-    GPIO.setup(gpio_map.OUTER_PUSH_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(gpio_map.INNER_PUSH_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(gpio_map.BACK_PUSH_BUTTON_PIN, GPIO.IN)
-    
+    GPIO.setup(
+        gpio_map.OUTER_PUSH_BUTTON_PIN,
+        GPIO.IN,
+        pull_up_down=GPIO.PUD_UP
+    )
 
-    GPIO.setup(gpio_map.INNER_LIMIT_SWITCH_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(gpio_map.OUTER_LIMIT_SWITCH_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(
+        gpio_map.INNER_PUSH_BUTTON_PIN,
+        GPIO.IN,
+        pull_up_down=GPIO.PUD_UP
+    )
 
+    GPIO.setup(
+        gpio_map.BACK_PUSH_BUTTON_PIN,
+        GPIO.IN
+    )
+
+    GPIO.setup(
+        gpio_map.OUTER_LIMIT_SWITCH_PIN,
+        GPIO.IN,
+        pull_up_down=GPIO.PUD_UP
+    )
+
+    GPIO.setup(
+        gpio_map.INNER_LIMIT_SWITCH_PIN,
+        GPIO.IN,
+        pull_up_down=GPIO.PUD_UP
+    )
+
+
+def cleanup_gpio():
+    lock_both_solenoids()
+
+    turn_red_led_off()
+    turn_green_led_off()
+
+    stop_buzzer()
+
+    GPIO.cleanup()
+
+
+# =========================
+# System Output States
+# =========================
 
 def set_system_idle_outputs():
-    turn_red_led_on()
-    turn_green_led_off()
+    set_red_status()
+
     stop_buzzer()
 
     unlock_outer_solenoid()
@@ -71,7 +112,11 @@ def is_inner_door_open():
 
 
 def are_both_doors_closed():
-    return is_outer_door_closed() and is_inner_door_closed()
+    return (
+        is_outer_door_closed()
+        and
+        is_inner_door_closed()
+    )
 
 
 # =========================
@@ -90,24 +135,40 @@ def is_back_push_button_pressed():
     return GPIO.input(gpio_map.BACK_PUSH_BUTTON_PIN) == GPIO.HIGH
 
 
+def is_auth_cancel_button_pressed():
+    return is_outer_push_button_pressed()
+
+
 # =========================
 # Solenoids
 # =========================
 
 def unlock_outer_solenoid():
-    GPIO.output(gpio_map.OUTER_SOLENOID_PIN, settings.RELAY_ON)
+    GPIO.output(
+        gpio_map.OUTER_SOLENOID_PIN,
+        settings.RELAY_ON
+    )
 
 
 def lock_outer_solenoid():
-    GPIO.output(gpio_map.OUTER_SOLENOID_PIN, settings.RELAY_OFF)
+    GPIO.output(
+        gpio_map.OUTER_SOLENOID_PIN,
+        settings.RELAY_OFF
+    )
 
 
 def unlock_inner_solenoid():
-    GPIO.output(gpio_map.INNER_SOLENOID_PIN, settings.RELAY_ON)
+    GPIO.output(
+        gpio_map.INNER_SOLENOID_PIN,
+        settings.RELAY_ON
+    )
 
 
 def lock_inner_solenoid():
-    GPIO.output(gpio_map.INNER_SOLENOID_PIN, settings.RELAY_OFF)
+    GPIO.output(
+        gpio_map.INNER_SOLENOID_PIN,
+        settings.RELAY_OFF
+    )
 
 
 def lock_both_solenoids():
@@ -155,15 +216,3 @@ def start_buzzer():
 
 def stop_buzzer():
     GPIO.output(gpio_map.BUZZER_PIN, GPIO.LOW)
-
-
-def cleanup_gpio():
-    lock_both_solenoids()
-    turn_red_led_off()
-    turn_green_led_off()
-    stop_buzzer()
-    GPIO.cleanup()
-
-
-def is_auth_cancel_button_pressed():
-    return GPIO.input(gpio_map.OUTER_PUSH_BUTTON_PIN) == GPIO.LOW

@@ -1,4 +1,9 @@
-from database.database_manager import execute_insert, execute_non_query, execute_query, execute_query_one
+from database.database_manager import (
+    execute_insert,
+    execute_non_query,
+    execute_query,
+    execute_query_one
+)
 
 
 def create_system_setting(setting_key, setting_value, description=None):
@@ -11,13 +16,23 @@ def create_system_setting(setting_key, setting_value, description=None):
             CreationDate,
             LastUpdatedDate
         )
-        VALUES (?, ?, ?, datetime('now'), datetime('now'));
+        VALUES
+        (
+            ?,
+            ?,
+            ?,
+            datetime('now'),
+            datetime('now')
+        );
     """
 
-    setting_id = execute_insert(query, (setting_key, setting_value, description))
+    setting_id = execute_insert(
+        query,
+        (setting_key, setting_value, description)
+    )
 
     if setting_id:
-        print(f"[DATABASE] System setting created: {setting_key}")
+        print(f"[DATABASE] System setting created: {setting_key}", flush=True)
 
     return setting_id
 
@@ -72,10 +87,13 @@ def update_setting_value(setting_key, setting_value):
         WHERE SettingKey = ?;
     """
 
-    rows = execute_non_query(query, (setting_value, setting_key))
+    rows = execute_non_query(
+        query,
+        (setting_value, setting_key)
+    )
 
     if rows > 0:
-        print(f"[DATABASE] System setting updated: {setting_key}")
+        print(f"[DATABASE] System setting updated: {setting_key}", flush=True)
 
     return rows > 0
 
@@ -86,5 +104,10 @@ def save_setting(setting_key, setting_value, description=None):
     if setting:
         return update_setting_value(setting_key, setting_value)
 
-    setting_id = create_system_setting(setting_key, setting_value, description)
+    setting_id = create_system_setting(
+        setting_key,
+        setting_value,
+        description
+    )
+
     return setting_id is not None
