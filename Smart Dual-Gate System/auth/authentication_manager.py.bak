@@ -330,8 +330,6 @@ class AuthenticationManager:
                     flush=True
                 )
 
-                os.environ["FACE_EMPLOYEE_ID"] = str(self.current_employee_id)
-
                 helper_ok, face_output = self._run_helper("auth_face_only.py")
 
                 if helper_ok:

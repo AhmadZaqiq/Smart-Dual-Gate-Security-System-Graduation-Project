@@ -141,3 +141,7 @@ def blink_red_led_warning(seconds=5):
         time.sleep(LED_BLINK_DURATION)
 
     devices.turn_red_led_on()
+
+
+def beep_error():
+    single_beep(0.35)

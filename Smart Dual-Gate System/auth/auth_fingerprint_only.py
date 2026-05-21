@@ -17,7 +17,7 @@ UART_TX_PIN = "14"
 UART_RX_PIN = "15"
 
 FINGER_WAIT_DELAY = 0.1
-UART_STABILIZE_DELAY = 2
+UART_STABILIZE_DELAY = 3
 
 
 def restore_fingerprint_uart_pins():

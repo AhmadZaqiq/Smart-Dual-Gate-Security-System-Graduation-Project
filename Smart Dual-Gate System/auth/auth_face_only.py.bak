@@ -1,22 +1,18 @@
 import os
 import sys
 import time
-import sqlite3
 import warnings
-from pathlib import Path
 
 import cv2
 import face_recognition
 
 warnings.filterwarnings("ignore")
 
-PROJECT_DIR = Path(__file__).resolve().parent.parent
-DATABASE_PATH = PROJECT_DIR / "database" / "mantrap.db"
+REFERENCE_IMAGE = os.path.expanduser(
+    "~/mantrap_project/auth/face_data/reference_face.jpg"
+)
 
-try:
-    from config.settings import FACE_CAM_DEVICE
-except ImportError:
-    FACE_CAM_DEVICE = "/dev/video0"
+FACE_CAM_DEVICE = 0
 
 FRAME_SCALE = 0.5
 FACE_TOLERANCE = 0.5
@@ -25,65 +21,13 @@ MAX_FRAMES_TO_SCAN = 40
 CAMERA_WARMUP_DELAY = 1
 
 
-def get_employee_id():
-    if len(sys.argv) >= 2:
-        return int(sys.argv[1])
-
-    employee_id = os.environ.get("FACE_EMPLOYEE_ID")
-
-    if employee_id:
-        return int(employee_id)
-
-    print("FACE_EMPLOYEE_ID_REQUIRED", flush=True)
-    return None
-
-
-def get_reference_image_path(employee_id):
-    connection = sqlite3.connect(DATABASE_PATH)
-    connection.row_factory = sqlite3.Row
-
-    try:
-        cursor = connection.cursor()
-
-        cursor.execute(
-            """
-            SELECT FaceImagePath
-            FROM EmployeeAuthentication
-            WHERE EmployeeID = ?
-            LIMIT 1
-            """,
-            (employee_id,)
-        )
-
-        row = cursor.fetchone()
-
-        if row is None:
-            print("FACE_EMPLOYEE_AUTH_NOT_FOUND", flush=True)
-            return None
-
-        face_image_path = row["FaceImagePath"]
-
-        if not face_image_path:
-            print("FACE_IMAGE_PATH_EMPTY", flush=True)
-            return None
-
-        path = Path(face_image_path)
-
-        if not path.is_absolute():
-            path = PROJECT_DIR / face_image_path
-
-        return path
-
-    finally:
-        connection.close()
-
-
-def load_reference_encoding(reference_image_path):
-    if not reference_image_path.exists():
-        print(f"FACE_REFERENCE_NOT_FOUND:{reference_image_path}", flush=True)
+def load_reference_encoding():
+    if not os.path.exists(REFERENCE_IMAGE):
+        print("FACE_REFERENCE_NOT_FOUND", flush=True)
         return None
 
-    reference_image = face_recognition.load_image_file(str(reference_image_path))
+    reference_image = face_recognition.load_image_file(REFERENCE_IMAGE)
+
     reference_encodings = face_recognition.face_encodings(reference_image)
 
     if len(reference_encodings) == 0:
@@ -91,6 +35,7 @@ def load_reference_encoding(reference_image_path):
         return None
 
     print("FACE_REFERENCE_READY", flush=True)
+
     return reference_encodings[0]
 
 
@@ -106,6 +51,7 @@ def open_camera():
     time.sleep(CAMERA_WARMUP_DELAY)
 
     print("FACE_CAMERA_READY", flush=True)
+
     return camera
 
 
@@ -153,33 +99,17 @@ def cleanup_camera(camera):
 def main():
     print("FACE_READY", flush=True)
 
-    employee_id = get_employee_id()
-
-    if employee_id is None:
-        print("FACE_FAIL", flush=True)
-        sys.exit(1)
-
-    print(f"FACE_EMPLOYEE_ID:{employee_id}", flush=True)
-
-    reference_image_path = get_reference_image_path(employee_id)
-
-    if reference_image_path is None:
-        print("FACE_FAIL", flush=True)
-        sys.exit(1)
-
-    print(f"FACE_REFERENCE_PATH:{reference_image_path}", flush=True)
-
-    reference_encoding = load_reference_encoding(reference_image_path)
+    reference_encoding = load_reference_encoding()
 
     if reference_encoding is None:
         print("FACE_FAIL", flush=True)
-        sys.exit(1)
+        exit(1)
 
     camera = open_camera()
 
     if camera is None:
         print("FACE_FAIL", flush=True)
-        sys.exit(1)
+        exit(1)
 
     matched = False
 
@@ -213,10 +143,10 @@ def main():
 
     if matched:
         print("FACE_OK", flush=True)
-        sys.exit(0)
+        exit(0)
 
     print("FACE_FAIL", flush=True)
-    sys.exit(1)
+    exit(1)
 
 
 if __name__ == "__main__":

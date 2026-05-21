@@ -170,6 +170,8 @@ class MantrapFSM:
 
         if detected_count == 1:
             system_logger.log_info("Exactly one figure detected")
+            indicators.beep_success()
+
             self.reset_warning_data()
             self.change_state(states.AUTHENTICATION_READY)
             return
