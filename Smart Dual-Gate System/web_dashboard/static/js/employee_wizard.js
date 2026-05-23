@@ -100,7 +100,14 @@ window.MantrapEmployeeWizard = (function () {
 
     async function startRfidEnrollment() {
         setEnrollmentBox("Starting RFID registration...", "loading");
-        await callEnrollment("/api/enrollment/rfid/start", "POST");
+
+        const result = await callEnrollment("/api/enrollment/rfid/start", "POST");
+
+        if (!result.success || result.data?.success === false) {
+            setEnrollmentBox(result.error || result.data?.message || "Unable to start RFID enrollment.", "error");
+            return;
+        }
+
         startEnrollmentPoll((data) => {
             state.rfidUid = data.uid || "";
             document.getElementById("review-rfid").textContent = state.rfidUid || "Not registered";
@@ -112,7 +119,14 @@ window.MantrapEmployeeWizard = (function () {
 
     async function startFingerprintEnrollment() {
         setEnrollmentBox("Place finger on sensor...", "loading");
-        await callEnrollment("/api/enrollment/fingerprint/start", "POST");
+
+        const result = await callEnrollment("/api/enrollment/fingerprint/start", "POST");
+
+        if (!result.success || result.data?.success === false) {
+            setEnrollmentBox(result.error || result.data?.message || "Unable to start fingerprint enrollment.", "error");
+            return;
+        }
+
         startEnrollmentPoll((data) => {
             state.fingerprintPosition = data.position || null;
             document.getElementById("review-fingerprint").textContent = state.fingerprintPosition ?? "Not enrolled";

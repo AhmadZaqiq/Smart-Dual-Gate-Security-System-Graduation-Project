@@ -1,9 +1,9 @@
-import json
 from datetime import datetime, timezone
 
 import requests
 
 from web_dashboard.config import Config
+from web_dashboard.services import door_sensor_service
 from web_dashboard.utils.path_setup import ensure_project_root_on_path
 
 ensure_project_root_on_path()
@@ -19,6 +19,20 @@ def _parse_timestamp(value):
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def _apply_live_door_states(snapshot):
+    live_doors = door_sensor_service.read_live_door_states()
+
+    snapshot["door_sensor_available"] = live_doors.get("available", False)
+
+    if live_doors.get("available"):
+        snapshot["outer_door"] = live_doors.get("outer_door") or "unknown"
+        snapshot["inner_door"] = live_doors.get("inner_door") or "unknown"
+        snapshot["outer_door_raw"] = live_doors.get("outer_raw")
+        snapshot["inner_door_raw"] = live_doors.get("inner_raw")
+
+    return snapshot
 
 
 def get_system_status():
@@ -38,11 +52,14 @@ def get_system_status():
         ).total_seconds()
         is_online = age_seconds <= Config.STATUS_STALE_SECONDS
 
+    snapshot = _apply_live_door_states(snapshot)
+
     snapshot["system_online"] = is_online
     snapshot["process"] = process
     snapshot["process_lifecycle"] = process.get("lifecycle", "UNKNOWN")
     snapshot["stream_health"] = _resolve_stream_health(snapshot, process)
     snapshot["alarm_level"] = _resolve_alarm_level(snapshot)
+
     return snapshot
 
 
@@ -87,6 +104,7 @@ def get_health_report():
     return {
         "database_ok": Config.DATABASE_PATH and True,
         "status_file_ok": bool(status),
+        "door_sensor_available": status.get("door_sensor_available", False),
         "stream_healthy": stream_healthy,
         "fsm_online": status.get("system_online", False),
         "yolo_running": status.get("yolo_running", False),

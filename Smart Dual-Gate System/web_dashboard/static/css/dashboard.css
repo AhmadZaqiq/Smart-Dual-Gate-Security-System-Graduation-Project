@@ -605,3 +605,68 @@ body {
         min-height: 78px;
     }
 }
+
+/* Employee enrollment wizard layout fix */
+.wizard-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.wizard-step {
+    display: none;
+    min-height: 190px;
+}
+
+.wizard-step.active {
+    display: block;
+}
+
+.wizard-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.wizard-footer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.wizard-step .btn-action,
+.wizard-footer .btn-action {
+    position: static !important;
+    min-width: 92px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.enrollment-status-box {
+    min-height: 54px;
+    white-space: pre-line;
+}
+
+@media (max-width: 640px) {
+    .wizard-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .wizard-footer-actions {
+        justify-content: stretch;
+    }
+
+    .wizard-footer-actions .btn-action,
+    #wizard-back {
+        width: 100%;
+    }
+}

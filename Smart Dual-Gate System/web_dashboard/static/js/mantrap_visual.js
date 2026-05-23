@@ -125,12 +125,17 @@ window.MantrapVisual = (function () {
         canvas.height = 128;
 
         const ctx = canvas.getContext("2d");
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.font = "700 34px Arial";
-        ctx.fillStyle = color;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+        function draw(value, drawColor) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "700 34px Arial";
+            ctx.fillStyle = drawColor;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(value, canvas.width / 2, canvas.height / 2);
+        }
+
+        draw(text, color);
 
         const texture = new THREE.CanvasTexture(canvas);
         const material = new THREE.SpriteMaterial({
@@ -140,8 +145,19 @@ window.MantrapVisual = (function () {
 
         const sprite = new THREE.Sprite(material);
         sprite.scale.set(2.8, 0.7, 1);
+        sprite.userData.drawText = draw;
+        sprite.userData.texture = texture;
 
         return sprite;
+    }
+
+    function updateTextSprite(sprite, text, color = "#cbd5e1") {
+        if (!sprite || !sprite.userData.drawText || !sprite.userData.texture) {
+            return;
+        }
+
+        sprite.userData.drawText(text, color);
+        sprite.userData.texture.needsUpdate = true;
     }
 
     function createSingleDoorSystem(xPosition, label, side) {
@@ -225,6 +241,30 @@ window.MantrapVisual = (function () {
         };
     }
 
+    function personColorByCount(total) {
+        if (total === 1) {
+            return {
+                main: 0x22c55e,
+                emissive: 0x15803d,
+                label: "#86efac",
+            };
+        }
+
+        if (total >= 2) {
+            return {
+                main: 0xef4444,
+                emissive: 0x991b1b,
+                label: "#fca5a5",
+            };
+        }
+
+        return {
+            main: 0x64748b,
+            emissive: 0x334155,
+            label: "#cbd5e1",
+        };
+    }
+
     function createPerson(index, total) {
         const group = new THREE.Group();
 
@@ -238,9 +278,11 @@ window.MantrapVisual = (function () {
         const position = positions[index] || { x: 0, z: 0 };
         group.position.set(position.x, 0.08, position.z);
 
-        const bodyMat = makeMaterial(0x22d3ee, {
-            emissive: 0x0891b2,
-            emissiveIntensity: 0.48,
+        const personColors = personColorByCount(total);
+
+        const bodyMat = makeMaterial(personColors.main, {
+            emissive: personColors.emissive,
+            emissiveIntensity: total >= 2 ? 0.82 : 0.48,
             metalness: 0.12,
             roughness: 0.28,
         });
@@ -276,18 +318,18 @@ window.MantrapVisual = (function () {
 
         const ring = new THREE.Mesh(
             new THREE.TorusGeometry(0.31, 0.018, 8, 40),
-            makeMaterial(0x22d3ee, {
+            makeMaterial(personColors.main, {
                 transparent: true,
                 opacity: 0.78,
-                emissive: 0x0891b2,
-                emissiveIntensity: 0.65,
+                emissive: personColors.emissive,
+                emissiveIntensity: total >= 2 ? 0.95 : 0.65,
             }),
         );
 
         ring.rotation.x = Math.PI / 2;
         ring.position.y = 0.03;
 
-        const label = createTextSprite(String(index + 1), "#67e8f9");
+        const label = createTextSprite(String(index + 1), personColors.label);
         label.scale.set(0.45, 0.18, 1);
         label.position.set(0, 1.2, 0);
 

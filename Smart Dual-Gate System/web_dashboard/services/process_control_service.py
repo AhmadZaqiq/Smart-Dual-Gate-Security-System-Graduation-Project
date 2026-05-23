@@ -10,7 +10,6 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 
 from web_dashboard.config import Config
 from web_dashboard.utils.path_setup import ensure_project_root_on_path
@@ -71,16 +70,26 @@ def _read_pid():
         return None
 
 
+def _is_linux_zombie(pid):
+    if os.name == "nt" or not pid:
+        return False
+
+    stat_path = f"/proc/{pid}/stat"
+
+    try:
+        with open(stat_path, "r", encoding="utf-8") as stat_file:
+            stat_data = stat_file.read().split()
+            return len(stat_data) > 2 and stat_data[2] == "Z"
+    except OSError:
+        return False
+
+
 def _is_pid_alive(pid):
     if not pid:
         return False
 
-    if os.name == "nt":
-        try:
-            os.kill(pid, 0)
-            return True
-        except OSError:
-            return False
+    if _is_linux_zombie(pid):
+        return False
 
     try:
         os.kill(pid, 0)
@@ -108,7 +117,18 @@ def _acquire_lock():
     _ensure_runtime_dir()
 
     if LOCK_FILE.exists():
-        return False
+        try:
+            lock_pid = int(LOCK_FILE.read_text(encoding="utf-8").strip())
+
+            if _is_pid_alive(lock_pid):
+                return False
+
+            LOCK_FILE.unlink()
+        except (ValueError, OSError):
+            try:
+                LOCK_FILE.unlink()
+            except OSError:
+                return False
 
     LOCK_FILE.write_text(str(os.getpid()), encoding="utf-8")
     return True
@@ -122,7 +142,47 @@ def _release_lock():
             pass
 
 
-def _terminate_process(pid):
+def _wait_until_process_stops(pid, timeout_seconds):
+    deadline = time.time() + timeout_seconds
+
+    while time.time() < deadline:
+        if not _is_pid_alive(pid):
+            return True
+
+        time.sleep(0.4)
+
+    return not _is_pid_alive(pid)
+
+
+def _send_ctrl_c_to_process(pid):
+    """
+    Send SIGINT like pressing Ctrl+C in terminal.
+    The process is started in a new session, so its process group ID is the PID.
+    """
+    if not pid or not _is_pid_alive(pid):
+        return True
+
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/PID", str(pid), "/T"],
+                check=False,
+                capture_output=True,
+            )
+        else:
+            os.killpg(pid, signal.SIGINT)
+
+        return _wait_until_process_stops(pid, STOP_TIMEOUT_SECONDS)
+    except ProcessLookupError:
+        return True
+    except OSError:
+        return False
+
+
+def _force_stop_process(pid):
+    """
+    Last-resort stop if Ctrl+C cleanup did not finish.
+    """
     if not pid or not _is_pid_alive(pid):
         return True
 
@@ -133,20 +193,19 @@ def _terminate_process(pid):
                 check=False,
                 capture_output=True,
             )
-        else:
-            os.kill(pid, signal.SIGTERM)
+            return True
 
-        deadline = time.time() + STOP_TIMEOUT_SECONDS
+        os.killpg(pid, signal.SIGTERM)
 
-        while time.time() < deadline:
-            if not _is_pid_alive(pid):
-                return True
-            time.sleep(0.4)
+        if _wait_until_process_stops(pid, 5):
+            return True
 
         if _is_pid_alive(pid):
-            os.kill(pid, signal.SIGKILL)
+            os.killpg(pid, signal.SIGKILL)
 
-        return not _is_pid_alive(pid)
+        return _wait_until_process_stops(pid, 3)
+    except ProcessLookupError:
+        return True
     except OSError:
         return False
 
@@ -250,9 +309,14 @@ def stop_system(admin_user_id):
         return False, "Another control operation is in progress."
 
     try:
-        _write_process_state_file("STOPPING", "Stopping mantrap process", pid=pid)
+        _write_process_state_file("STOPPING", "Sending Ctrl+C stop signal", pid=pid)
 
-        stopped = _terminate_process(pid)
+        stopped = _send_ctrl_c_to_process(pid)
+
+        if not stopped:
+            _write_process_state_file("STOPPING", "Ctrl+C timeout, forcing stop", pid=pid)
+            stopped = _force_stop_process(pid)
+
         _cleanup_stale_pid_file()
 
         if stopped:
@@ -262,33 +326,10 @@ def stop_system(admin_user_id):
                 action_type="SYSTEM_STOP",
                 table_name="MantrapProcess",
                 record_id=pid,
-                description="Mantrap system stopped from dashboard.",
+                description="Mantrap system stopped from dashboard using Ctrl+C signal.",
             )
             return True, "Mantrap system stopped successfully."
 
         return False, "Unable to stop mantrap process."
     finally:
         _release_lock()
-
-
-def restart_system(admin_user_id):
-    create_audit(
-        admin_user_id=admin_user_id,
-        action_type="SYSTEM_RESTART",
-        table_name="MantrapProcess",
-        description="Mantrap system restart requested from dashboard.",
-    )
-
-    stop_ok, stop_message = stop_system(admin_user_id)
-
-    if not stop_ok and "already stopped" not in stop_message.lower():
-        return False, stop_message
-
-    time.sleep(1.5)
-
-    start_ok, start_message = start_system(admin_user_id)
-
-    if start_ok:
-        return True, "Mantrap system restarted successfully."
-
-    return False, start_message

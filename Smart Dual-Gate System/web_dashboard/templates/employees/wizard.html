@@ -67,12 +67,23 @@
             </dl>
         </div>
 
-        <div class="d-flex justify-content-between mt-4">
-            <button type="button" class="btn btn-outline-secondary btn-action" id="wizard-back"><i class="ti ti-arrow-left"></i> Back</button>
-            <div class="d-flex gap-2">
-                <a href="{{ url_for('employees.list_employees') }}" class="btn btn-outline-danger btn-action">Cancel</a>
-                <button type="button" class="btn btn-primary btn-action" id="wizard-next">Next <i class="ti ti-arrow-right"></i></button>
-                <button type="button" class="btn btn-success btn-action d-none" id="wizard-save"><i class="ti ti-device-floppy me-1"></i> Save Employee</button>
+        <div class="wizard-footer mt-4">
+            <button type="button" class="btn btn-outline-secondary btn-action" id="wizard-back">
+                <i class="ti ti-arrow-left"></i> Back
+            </button>
+
+            <div class="wizard-footer-actions">
+                <a href="{{ url_for('employees.list_employees') }}" class="btn btn-outline-danger btn-action">
+                    Cancel
+                </a>
+
+                <button type="button" class="btn btn-primary btn-action" id="wizard-next">
+                    Next <i class="ti ti-arrow-right"></i>
+                </button>
+
+                <button type="button" class="btn btn-success btn-action d-none" id="wizard-save">
+                    <i class="ti ti-device-floppy me-1"></i> Save Employee
+                </button>
             </div>
         </div>
     </div>

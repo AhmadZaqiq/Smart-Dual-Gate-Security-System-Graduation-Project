@@ -6,13 +6,14 @@ from flask import Flask, Response
 from ultralytics import YOLO
 
 MODEL_PATH = "ai/models/human_figure_yolo.pt"
-CAMERA_PATH = "/dev/video2"
+CAMERA_PATH = "/dev/video4"
 CONFIDENCE_THRESHOLD = 0.50
 
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 YOLO_IMAGE_SIZE = 320
 JPEG_QUALITY = 70
+CAMERA_FPS = 10
 
 STREAM_HOST = "0.0.0.0"
 STREAM_PORT = 5000
@@ -54,8 +55,11 @@ def open_camera():
     print(f"[AI] Opening InnerCam: {CAMERA_PATH}", flush=True)
 
     camera = cv2.VideoCapture(CAMERA_PATH, cv2.CAP_V4L2)
+    camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     camera.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
     camera.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+    camera.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
+    camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
     time.sleep(1)
 

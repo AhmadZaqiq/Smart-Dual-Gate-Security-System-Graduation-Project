@@ -10,14 +10,6 @@ window.MantrapProcessControl = (function () {
         });
     }
 
-    function setLifecycleBadge(element, state) {
-        if (!element) return;
-
-        const normalized = (state || "UNKNOWN").toUpperCase();
-        element.textContent = normalized;
-        element.dataset.state = normalized;
-    }
-
     function updateProcessUi(process) {
         const lifecycle = process?.lifecycle || "UNKNOWN";
 
@@ -25,7 +17,13 @@ window.MantrapProcessControl = (function () {
             if (!element) return;
 
             if (element.id === "nav-process-badge" || element.id === "live-process-badge") {
-                element.querySelector("span").textContent = `Process: ${lifecycle}`;
+                const span = element.querySelector("span");
+
+                if (span) {
+                    span.textContent = `Process: ${lifecycle}`;
+                } else {
+                    element.textContent = `Process: ${lifecycle}`;
+                }
             } else {
                 element.textContent = lifecycle;
             }
@@ -41,27 +39,23 @@ window.MantrapProcessControl = (function () {
     }
 
     async function callAction(action) {
-        if (action === "reset-idle") {
-            if (!window.confirm("Return the security workflow to idle standby mode?")) {
-                return;
-            }
-        } else {
-            const labels = {
-                start: "start the mantrap system",
-                stop: "stop the mantrap system",
-                restart: "restart the mantrap system",
-            };
+        const labels = {
+            start: "start the mantrap system",
+            stop: "stop the mantrap system",
+        };
 
-            if (!window.confirm(`Are you sure you want to ${labels[action]}?`)) {
-                return;
-            }
+        if (!labels[action]) {
+            return;
+        }
+
+        if (!window.confirm(`Are you sure you want to ${labels[action]}?`)) {
+            return;
         }
 
         setButtonsDisabled(true);
 
         try {
-            const endpoint = action === "reset-idle" ? "/api/system/reset-idle" : `/api/system/${action}`;
-            const response = await fetch(endpoint, {
+            const response = await fetch(`/api/system/${action}`, {
                 method: "POST",
                 headers: {
                     "X-CSRFToken": getCsrfToken(),
@@ -80,7 +74,10 @@ window.MantrapProcessControl = (function () {
 
             if (payload.data?.message) {
                 const message = document.getElementById("process-control-message");
-                if (message) message.textContent = payload.data.message;
+
+                if (message) {
+                    message.textContent = payload.data.message;
+                }
             }
         } catch (error) {
             window.alert("Unable to reach the control API.");
@@ -104,7 +101,10 @@ window.MantrapProcessControl = (function () {
         document.querySelectorAll(".system-control-btn").forEach((button) => {
             button.addEventListener("click", () => {
                 const action = button.dataset.action;
-                if (action) callAction(action);
+
+                if (action) {
+                    callAction(action);
+                }
             });
         });
     }

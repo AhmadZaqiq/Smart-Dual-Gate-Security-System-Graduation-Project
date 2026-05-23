@@ -2,7 +2,7 @@
     <div class="system-panel-header">
         <div>
             <h3>System Control</h3>
-            <p>Safe process lifecycle and workflow standby controls</p>
+            <p>Safe process lifecycle controls</p>
         </div>
 
         <span id="system-control-status-badge" class="system-panel-status is-stopped">
@@ -20,16 +20,6 @@
             <span class="system-panel-icon">■</span>
             <span>Stop System</span>
         </button>
-
-        <button type="button" class="system-panel-btn is-restart" data-panel-system-action="restart">
-            <span class="system-panel-icon">↻</span>
-            <span>Restart System</span>
-        </button>
-
-        <button type="button" class="system-panel-btn is-reset" data-panel-system-action="reset-idle">
-            <span class="system-panel-icon">⟳</span>
-            <span>Reset to Idle</span>
-        </button>
     </div>
 
     <p id="system-control-message" class="system-panel-message">
@@ -38,7 +28,6 @@
 </div>
 
 <style>
-    /* Hide accidental duplicated control buttons in the top navbar */
     header [data-system-action],
     nav [data-system-action],
     .navbar [data-system-action],
@@ -104,10 +93,10 @@
 
     .system-panel-actions {
         display: grid;
-        grid-template-columns: repeat(4, minmax(130px, 1fr));
+        grid-template-columns: repeat(2, minmax(150px, 1fr));
         gap: 0.9rem;
         padding-top: 1.25rem;
-        max-width: 760px;
+        max-width: 390px;
     }
 
     .system-panel-btn {
@@ -161,28 +150,10 @@
         color: #fca5a5;
     }
 
-    .system-panel-btn.is-restart {
-        background: rgba(59, 130, 246, 0.14);
-        border-color: rgba(59, 130, 246, 0.42);
-        color: #93c5fd;
-    }
-
-    .system-panel-btn.is-reset {
-        background: rgba(245, 158, 11, 0.14);
-        border-color: rgba(245, 158, 11, 0.42);
-        color: #fde68a;
-    }
-
     .system-panel-message {
         margin: 1.05rem 0 0 0;
         color: #8aa0bd;
         font-size: 0.88rem;
-    }
-
-    @media (max-width: 900px) {
-        .system-panel-actions {
-            grid-template-columns: repeat(2, minmax(130px, 1fr));
-        }
     }
 
     @media (max-width: 520px) {
@@ -192,6 +163,7 @@
 
         .system-panel-actions {
             grid-template-columns: 1fr;
+            max-width: 100%;
         }
     }
 </style>
@@ -201,6 +173,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const buttons = document.querySelectorAll("[data-panel-system-action]");
     const messageBox = document.getElementById("system-control-message");
     const statusBadge = document.getElementById("system-control-status-badge");
+
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute("content") : "";
+    }
 
     function setButtonsDisabled(isDisabled) {
         buttons.forEach(function (button) {
@@ -243,6 +220,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (result.success && result.data) {
                 setStatus(result.data.lifecycle);
+
+                if (result.data.message) {
+                    setMessage(result.data.message);
+                }
             }
         } catch (error) {
             console.warn("Unable to refresh process status", error);
@@ -250,6 +231,19 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     async function runSystemAction(action) {
+        const labels = {
+            start: "start the mantrap system",
+            stop: "stop the mantrap system",
+        };
+
+        if (!labels[action]) {
+            return;
+        }
+
+        if (!window.confirm("Are you sure you want to " + labels[action] + "?")) {
+            return;
+        }
+
         setButtonsDisabled(true);
         setStatus("WORKING");
         setMessage("Running control command...");
@@ -258,36 +252,29 @@ document.addEventListener("DOMContentLoaded", function () {
             const response = await fetch("/api/system/" + action, {
                 method: "POST",
                 headers: {
+                    "X-CSRFToken": getCsrfToken(),
                     "Content-Type": "application/json",
-                    "X-CSRFToken": "{{ csrf_token() }}"
                 },
-                body: JSON.stringify({})
             });
 
             const result = await response.json();
 
-            if (!response.ok || !result.success) {
+            if (!result.success) {
                 setMessage(result.error || "Control command failed.", true);
-                await refreshProcessStatus();
                 return;
             }
 
-            const message = result.data && result.data.message
-                ? result.data.message
-                : "Command completed successfully.";
-
-            setMessage(message);
-
             if (result.data && result.data.process) {
                 setStatus(result.data.process.lifecycle);
-            } else {
-                await refreshProcessStatus();
             }
+
+            setMessage(result.data && result.data.message ? result.data.message : "Control command completed.");
         } catch (error) {
-            setMessage("Unable to contact system control API.", true);
-            await refreshProcessStatus();
+            console.error(error);
+            setMessage("Unable to reach the control API.", true);
         } finally {
             setButtonsDisabled(false);
+            refreshProcessStatus();
         }
     }
 
@@ -298,5 +285,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     refreshProcessStatus();
+    setInterval(refreshProcessStatus, 3000);
 });
 </script>

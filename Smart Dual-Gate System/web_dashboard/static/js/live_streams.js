@@ -4,6 +4,28 @@ window.MantrapLiveStreams = (function () {
         return meta ? meta.getAttribute("content") : "";
     }
 
+    function normalizeStreamUrl(url) {
+        if (!url) {
+            return null;
+        }
+
+        try {
+            const streamUrl = new URL(url, window.location.origin);
+
+            if (
+                streamUrl.hostname === "127.0.0.1"
+                || streamUrl.hostname === "localhost"
+                || streamUrl.hostname === "0.0.0.0"
+            ) {
+                streamUrl.hostname = window.location.hostname;
+            }
+
+            return streamUrl.toString();
+        } catch (error) {
+            return url;
+        }
+    }
+
     function setHealthBadge(element, health) {
         if (!element) {
             return;
@@ -45,6 +67,34 @@ window.MantrapLiveStreams = (function () {
         return response.json();
     }
 
+    function showImageError(cameraKey) {
+        const healthBadge = document.getElementById(`${cameraKey}-stream-health`);
+        const statusText = document.getElementById(`${cameraKey}-stream-status-text`);
+        const image = document.getElementById(`${cameraKey}-stream-image`);
+        const offline = document.getElementById(`${cameraKey}-stream-offline`);
+        const loading = document.getElementById(`${cameraKey}-stream-loading`);
+
+        setHealthBadge(healthBadge, "OFFLINE");
+
+        if (statusText) {
+            statusText.textContent = "Stream URL is not reachable from browser";
+        }
+
+        if (loading) {
+            loading.classList.add("d-none");
+        }
+
+        if (image) {
+            image.classList.add("d-none");
+            image.removeAttribute("src");
+            image.dataset.src = "";
+        }
+
+        if (offline) {
+            offline.classList.remove("d-none");
+        }
+    }
+
     function renderStream(cameraKey, streamData) {
         const healthBadge = document.getElementById(`${cameraKey}-stream-health`);
         const statusText = document.getElementById(`${cameraKey}-stream-status-text`);
@@ -54,7 +104,8 @@ window.MantrapLiveStreams = (function () {
         const sourceLabel = document.getElementById(`${cameraKey}-stream-source`);
 
         const health = streamData.health || "OFFLINE";
-        const isOnline = health === "ONLINE" && streamData.url;
+        const browserUrl = normalizeStreamUrl(streamData.url);
+        const isOnline = health === "ONLINE" && browserUrl;
 
         setHealthBadge(healthBadge, health);
 
@@ -86,12 +137,16 @@ window.MantrapLiveStreams = (function () {
         }
 
         if (image) {
+            image.onerror = function () {
+                showImageError(cameraKey);
+            };
+
             if (isOnline) {
                 image.classList.remove("d-none");
-                const nextUrl = `${streamData.url}?ts=${Date.now()}`;
-                if (image.dataset.src !== streamData.url) {
-                    image.src = nextUrl;
-                    image.dataset.src = streamData.url;
+
+                if (image.dataset.src !== browserUrl) {
+                    image.src = `${browserUrl}?ts=${Date.now()}`;
+                    image.dataset.src = browserUrl;
                 }
             } else {
                 image.classList.add("d-none");

@@ -2,14 +2,16 @@
 
 import json
 import os
+import signal
 import subprocess
 import sys
-from pathlib import Path
+from datetime import datetime, timezone
 
 from web_dashboard.config import Config
 
 STATUS_FILE = Config.PROJECT_ROOT / "runtime" / "enrollment_status.json"
 ENROLLMENT_PID_FILE = Config.PROJECT_ROOT / "runtime" / "enrollment.pid"
+ENROLLMENT_LOG_FILE = Config.PROJECT_ROOT / "runtime" / "enrollment.log"
 
 
 def _write_pid(process):
@@ -19,19 +21,71 @@ def _write_pid(process):
 
 def _clear_pid():
     if ENROLLMENT_PID_FILE.exists():
-        ENROLLMENT_PID_FILE.unlink()
+        try:
+            ENROLLMENT_PID_FILE.unlink()
+        except OSError:
+            pass
+
+
+def _read_pid():
+    if not ENROLLMENT_PID_FILE.exists():
+        return None
+
+    try:
+        return int(ENROLLMENT_PID_FILE.read_text(encoding="utf-8").strip())
+    except (ValueError, OSError):
+        return None
+
+
+def _is_pid_alive(pid):
+    if not pid:
+        return False
+
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def _stop_existing_enrollment():
+    pid = _read_pid()
+
+    if pid and _is_pid_alive(pid):
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+
+    _clear_pid()
 
 
 def _reset_status(enrollment_type, state, message):
     STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
     payload = {
         "type": enrollment_type,
         "state": state,
         "message": message,
-        "updated_at": "",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
     }
+
     with open(STATUS_FILE, "w", encoding="utf-8") as status_file:
         json.dump(payload, status_file, indent=2)
+
+
+def _read_last_log_lines(limit=12):
+    if not ENROLLMENT_LOG_FILE.exists():
+        return ""
+
+    try:
+        lines = ENROLLMENT_LOG_FILE.read_text(
+            encoding="utf-8",
+            errors="replace"
+        ).splitlines()
+        return "\n".join(lines[-limit:])
+    except OSError:
+        return ""
 
 
 def start_rfid_enrollment():
@@ -48,14 +102,21 @@ def _start_enrollment(script, enrollment_type):
     if not script.exists():
         return False, "Enrollment script not found."
 
+    _stop_existing_enrollment()
     _reset_status(enrollment_type, "starting", "Starting enrollment process...")
+
     python_executable = os.environ.get("MANTRAP_PYTHON", sys.executable)
+
+    ENROLLMENT_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    log_file = open(ENROLLMENT_LOG_FILE, "a", encoding="utf-8")
 
     process = subprocess.Popen(
         [python_executable, str(script)],
         cwd=str(Config.PROJECT_ROOT),
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=log_file,
+        stderr=log_file,
+        start_new_session=(os.name != "nt"),
     )
 
     _write_pid(process)
@@ -63,24 +124,36 @@ def _start_enrollment(script, enrollment_type):
 
 
 def cancel_enrollment():
-    if ENROLLMENT_PID_FILE.exists():
-        try:
-            pid = int(ENROLLMENT_PID_FILE.read_text(encoding="utf-8").strip())
-            os.kill(pid, 9)
-        except (ValueError, OSError):
-            pass
-
-    _clear_pid()
+    _stop_existing_enrollment()
     _reset_status("cancelled", "cancelled", "Enrollment cancelled.")
     return True, "Enrollment cancelled."
 
 
 def get_enrollment_status():
     if not STATUS_FILE.exists():
-        return {"state": "idle", "message": "No active enrollment."}
+        return {
+            "state": "idle",
+            "message": "No active enrollment.",
+        }
 
     try:
         with open(STATUS_FILE, "r", encoding="utf-8") as status_file:
-            return json.load(status_file)
+            data = json.load(status_file)
     except (json.JSONDecodeError, OSError):
-        return {"state": "error", "message": "Unable to read enrollment status."}
+        return {
+            "state": "error",
+            "message": "Unable to read enrollment status.",
+        }
+
+    pid = _read_pid()
+
+    if pid and not _is_pid_alive(pid):
+        _clear_pid()
+
+    if data.get("state") == "error":
+        log_tail = _read_last_log_lines()
+
+        if log_tail:
+            data["message"] = f"{data.get('message')}\n{log_tail}"
+
+    return data
