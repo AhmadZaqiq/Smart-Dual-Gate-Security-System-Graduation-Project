@@ -6,12 +6,28 @@ import signal
 import subprocess
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
-from web_dashboard.config import Config
 
-STATUS_FILE = Config.PROJECT_ROOT / "runtime" / "enrollment_status.json"
-ENROLLMENT_PID_FILE = Config.PROJECT_ROOT / "runtime" / "enrollment.pid"
-ENROLLMENT_LOG_FILE = Config.PROJECT_ROOT / "runtime" / "enrollment.log"
+def _detect_project_root():
+    current_file = Path(__file__).resolve()
+
+    for parent in current_file.parents:
+        rfid_script = parent / "auth" / "enroll_rfid.py"
+        fingerprint_script = parent / "auth" / "enroll_fingerprint.py"
+        dashboard_folder = parent / "web_dashboard"
+
+        if rfid_script.exists() and fingerprint_script.exists() and dashboard_folder.exists():
+            return parent
+
+    return current_file.parents[2]
+
+
+PROJECT_ROOT = _detect_project_root()
+
+STATUS_FILE = PROJECT_ROOT / "runtime" / "enrollment_status.json"
+ENROLLMENT_PID_FILE = PROJECT_ROOT / "runtime" / "enrollment.pid"
+ENROLLMENT_LOG_FILE = PROJECT_ROOT / "runtime" / "enrollment.log"
 
 
 def _write_pid(process):
@@ -89,18 +105,20 @@ def _read_last_log_lines(limit=12):
 
 
 def start_rfid_enrollment():
-    script = Config.PROJECT_ROOT / "auth" / "enroll_rfid.py"
+    script = PROJECT_ROOT / "auth" / "enroll_rfid.py"
     return _start_enrollment(script, "rfid")
 
 
 def start_fingerprint_enrollment():
-    script = Config.PROJECT_ROOT / "auth" / "enroll_fingerprint.py"
+    script = PROJECT_ROOT / "auth" / "enroll_fingerprint.py"
     return _start_enrollment(script, "fingerprint")
 
 
 def _start_enrollment(script, enrollment_type):
     if not script.exists():
-        return False, "Enrollment script not found."
+        message = f"Enrollment script not found: {script}"
+        _reset_status(enrollment_type, "error", message)
+        return False, message
 
     _stop_existing_enrollment()
     _reset_status(enrollment_type, "starting", "Starting enrollment process...")
@@ -111,13 +129,18 @@ def _start_enrollment(script, enrollment_type):
 
     log_file = open(ENROLLMENT_LOG_FILE, "a", encoding="utf-8")
 
-    process = subprocess.Popen(
-        [python_executable, str(script)],
-        cwd=str(Config.PROJECT_ROOT),
-        stdout=log_file,
-        stderr=log_file,
-        start_new_session=(os.name != "nt"),
-    )
+    try:
+        process = subprocess.Popen(
+            [python_executable, str(script)],
+            cwd=str(PROJECT_ROOT),
+            stdout=log_file,
+            stderr=log_file,
+            start_new_session=(os.name != "nt"),
+        )
+    except Exception as error:
+        message = f"Could not start enrollment process: {error}"
+        _reset_status(enrollment_type, "error", message)
+        return False, message
 
     _write_pid(process)
     return True, "Enrollment started."
@@ -134,6 +157,7 @@ def get_enrollment_status():
         return {
             "state": "idle",
             "message": "No active enrollment.",
+            "project_root": str(PROJECT_ROOT),
         }
 
     try:
@@ -143,6 +167,7 @@ def get_enrollment_status():
         return {
             "state": "error",
             "message": "Unable to read enrollment status.",
+            "project_root": str(PROJECT_ROOT),
         }
 
     pid = _read_pid()
@@ -156,4 +181,5 @@ def get_enrollment_status():
         if log_tail:
             data["message"] = f"{data.get('message')}\n{log_tail}"
 
+    data["project_root"] = str(PROJECT_ROOT)
     return data

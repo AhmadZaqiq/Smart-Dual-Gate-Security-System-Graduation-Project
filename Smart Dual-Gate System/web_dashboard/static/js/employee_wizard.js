@@ -1,281 +1,439 @@
-window.MantrapEmployeeWizard = (function () {
-    const state = {
-        step: 1,
-        rfidUid: "",
-        fingerprintPosition: null,
-        faceImagePath: "",
-        enrollmentPoll: null,
-    };
+(function () {
+    "use strict";
 
-    function getCsrfToken() {
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        return meta ? meta.getAttribute("content") : "";
-    }
+    const Wizard = {
+        currentStep: 1,
+        totalSteps: 5,
+        pollTimer: null,
 
-    function showStep(step) {
-        state.step = step;
+        data: {
+            employee_number: "",
+            first_name: "",
+            second_name: "",
+            third_name: "",
+            last_name: "",
+            rfid_uid: "",
+            fingerprint_position: "",
+            face_image_path: ""
+        },
 
-        document.querySelectorAll(".wizard-step").forEach((panel) => {
-            panel.classList.toggle("active", Number(panel.dataset.step) === step);
-        });
+        init() {
+            this.cacheElements();
+            this.bindEvents();
+            this.showStep(1);
+            this.updateReview();
+        },
 
-        document.querySelectorAll(".wizard-step-pill").forEach((pill) => {
-            pill.classList.toggle("active", Number(pill.dataset.step) === step);
-        });
+        cacheElements() {
+            this.stepPills = document.querySelectorAll(".wizard-step-pill");
+            this.stepPanels = document.querySelectorAll(".wizard-step");
 
-        const backButton = document.getElementById("wizard-back");
-        const nextButton = document.getElementById("wizard-next");
-        const saveButton = document.getElementById("wizard-save");
+            this.backBtn = document.getElementById("wizard-back");
+            this.nextBtn = document.getElementById("wizard-next");
+            this.saveBtn = document.getElementById("wizard-save");
 
-        if (backButton) {
-            backButton.disabled = step === 1;
-        }
+            this.rfidStartBtn = document.getElementById("rfid-start-btn");
+            this.rfidRetryBtn = document.getElementById("rfid-retry-btn");
+            this.rfidCancelBtn = document.getElementById("rfid-cancel-btn");
 
-        if (nextButton) {
-            nextButton.classList.toggle("d-none", step >= 5);
-        }
+            this.fingerprintStartBtn = document.getElementById("fingerprint-start-btn");
+            this.fingerprintRetryBtn = document.getElementById("fingerprint-retry-btn");
+            this.fingerprintCancelBtn = document.getElementById("fingerprint-cancel-btn");
 
-        if (saveButton) {
-            saveButton.classList.toggle("d-none", step !== 5);
-        }
-    }
+            this.rfidStatusBox = document.getElementById("enrollment-status-box");
+            this.fingerprintStatusBox = document.getElementById("fingerprint-status-box");
 
-    function setEnrollmentBox(message, tone) {
-        const box = document.getElementById("enrollment-status-box");
-        if (!box) {
-            return;
-        }
+            this.rfidPreview = document.getElementById("wizard-rfid-preview");
+            this.fingerprintPreview = document.getElementById("wizard-fingerprint-preview");
 
-        box.textContent = message;
-        box.className = "enrollment-status-box";
+            this.inputs = {
+                employee_number: document.querySelector('[name="employee_number"]'),
+                first_name: document.querySelector('[name="first_name"]'),
+                second_name: document.querySelector('[name="second_name"]'),
+                third_name: document.querySelector('[name="third_name"]'),
+                last_name: document.querySelector('[name="last_name"]'),
+                face_image_path: document.querySelector('[name="face_image_path"]')
+            };
 
-        if (tone) {
-            box.classList.add(`enrollment-${tone}`);
-        }
-    }
+            this.review = {
+                employee_number: document.getElementById("review-employee-number"),
+                full_name: document.getElementById("review-full-name"),
+                rfid: document.getElementById("review-rfid"),
+                fingerprint: document.getElementById("review-fingerprint"),
+                face: document.getElementById("review-face")
+            };
+        },
 
-    async function callEnrollment(path, method) {
-        const response = await fetch(path, {
-            method,
-            headers: {
-                "X-CSRFToken": getCsrfToken(),
-                "Content-Type": "application/json",
-            },
-        });
+        bindEvents() {
+            if (this.backBtn) {
+                this.backBtn.addEventListener("click", () => this.previousStep());
+            }
 
-        return response.json();
-    }
+            if (this.nextBtn) {
+                this.nextBtn.addEventListener("click", () => this.nextStep());
+            }
 
-    function stopEnrollmentPoll() {
-        if (state.enrollmentPoll) {
-            clearInterval(state.enrollmentPoll);
-            state.enrollmentPoll = null;
-        }
-    }
+            if (this.saveBtn) {
+                this.saveBtn.addEventListener("click", () => this.saveEmployee());
+            }
 
-    function startEnrollmentPoll(onSuccess) {
-        stopEnrollmentPoll();
+            if (this.rfidStartBtn) {
+                this.rfidStartBtn.addEventListener("click", () => this.startRfidEnrollment());
+            }
 
-        state.enrollmentPoll = setInterval(async () => {
-            try {
-                const response = await fetch("/api/enrollment/status");
-                const payload = await response.json();
-                const data = payload.data || {};
+            if (this.rfidRetryBtn) {
+                this.rfidRetryBtn.addEventListener("click", () => this.startRfidEnrollment());
+            }
 
-                setEnrollmentBox(data.message || "Waiting...", data.state);
+            if (this.rfidCancelBtn) {
+                this.rfidCancelBtn.addEventListener("click", () => this.cancelEnrollment("rfid"));
+            }
 
-                if (data.state === "success") {
-                    stopEnrollmentPoll();
-                    onSuccess(data);
+            if (this.fingerprintStartBtn) {
+                this.fingerprintStartBtn.addEventListener("click", () => this.startFingerprintEnrollment());
+            }
+
+            if (this.fingerprintRetryBtn) {
+                this.fingerprintRetryBtn.addEventListener("click", () => this.startFingerprintEnrollment());
+            }
+
+            if (this.fingerprintCancelBtn) {
+                this.fingerprintCancelBtn.addEventListener("click", () => this.cancelEnrollment("fingerprint"));
+            }
+
+            Object.values(this.inputs).forEach((input) => {
+                if (!input) {
+                    return;
                 }
 
-                if (data.state === "timeout" || data.state === "error" || data.state === "cancelled") {
-                    stopEnrollmentPoll();
+                input.addEventListener("input", () => {
+                    this.collectFormData();
+                    this.updateReview();
+                });
+            });
+        },
+
+        collectFormData() {
+            Object.keys(this.inputs).forEach((key) => {
+                if (this.inputs[key]) {
+                    this.data[key] = this.inputs[key].value.trim();
                 }
-            } catch (error) {
-                console.warn("Enrollment poll failed", error);
-            }
-        }, 1000);
-    }
+            });
+        },
 
-    async function startRfidEnrollment() {
-        setEnrollmentBox("Starting RFID registration...", "loading");
+        showStep(step) {
+            this.currentStep = Math.max(1, Math.min(this.totalSteps, step));
 
-        const result = await callEnrollment("/api/enrollment/rfid/start", "POST");
-
-        if (!result.success || result.data?.success === false) {
-            setEnrollmentBox(result.error || result.data?.message || "Unable to start RFID enrollment.", "error");
-            return;
-        }
-
-        startEnrollmentPoll((data) => {
-            state.rfidUid = data.uid || "";
-            document.getElementById("review-rfid").textContent = state.rfidUid || "Not registered";
-            document.getElementById("wizard-rfid-preview").textContent = state.rfidUid;
-            setEnrollmentBox("RFID card detected successfully.", "success");
-            document.getElementById("wizard-rfid-preview")?.classList.add("enrollment-success");
-        });
-    }
-
-    async function startFingerprintEnrollment() {
-        setEnrollmentBox("Place finger on sensor...", "loading");
-
-        const result = await callEnrollment("/api/enrollment/fingerprint/start", "POST");
-
-        if (!result.success || result.data?.success === false) {
-            setEnrollmentBox(result.error || result.data?.message || "Unable to start fingerprint enrollment.", "error");
-            return;
-        }
-
-        startEnrollmentPoll((data) => {
-            state.fingerprintPosition = data.position || null;
-            document.getElementById("review-fingerprint").textContent = state.fingerprintPosition ?? "Not enrolled";
-            setEnrollmentBox("Fingerprint enrolled successfully.", "success");
-        });
-    }
-
-    async function cancelEnrollment() {
-        stopEnrollmentPoll();
-        await callEnrollment("/api/enrollment/cancel", "POST");
-        setEnrollmentBox("Enrollment cancelled.", "cancelled");
-    }
-
-    function validateStep(step) {
-        if (step === 1) {
-            const required = ["employee_number", "first_name", "second_name", "third_name", "last_name"];
-            for (const fieldName of required) {
-                const field = document.querySelector(`[name="${fieldName}"]`);
-                if (!field || !field.value.trim()) {
-                    window.alert("Please complete all employee information fields.");
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    function populateReview() {
-        const mapping = [
-            ["review-employee-number", "employee_number"],
-            ["review-full-name", null],
-            ["review-rfid", null],
-            ["review-fingerprint", null],
-            ["review-face", null],
-        ];
-
-        mapping.forEach(([targetId, fieldName]) => {
-            const target = document.getElementById(targetId);
-            if (!target) {
-                return;
-            }
-
-            if (targetId === "review-full-name") {
-                const parts = ["first_name", "second_name", "third_name", "last_name"]
-                    .map((name) => document.querySelector(`[name="${name}"]`)?.value.trim())
-                    .filter(Boolean);
-                target.textContent = parts.join(" ");
-                return;
-            }
-
-            if (targetId === "review-rfid") {
-                target.textContent = state.rfidUid || "Not registered";
-                return;
-            }
-
-            if (targetId === "review-fingerprint") {
-                target.textContent = state.fingerprintPosition ?? "Not enrolled";
-                return;
-            }
-
-            if (targetId === "review-face") {
-                target.textContent = state.faceImagePath || "Not uploaded";
-                return;
-            }
-
-            if (fieldName) {
-                target.textContent = document.querySelector(`[name="${fieldName}"]`)?.value.trim() || "—";
-            }
-        });
-    }
-
-    async function saveEmployee() {
-        const saveButton = document.getElementById("wizard-save");
-        saveButton.disabled = true;
-        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
-
-        const payload = {
-            employee_number: document.querySelector('[name="employee_number"]').value.trim(),
-            first_name: document.querySelector('[name="first_name"]').value.trim(),
-            second_name: document.querySelector('[name="second_name"]').value.trim(),
-            third_name: document.querySelector('[name="third_name"]').value.trim(),
-            last_name: document.querySelector('[name="last_name"]').value.trim(),
-            rfid_uid: state.rfidUid || null,
-            fingerprint_position: state.fingerprintPosition,
-            face_image_path: state.faceImagePath || null,
-        };
-
-        try {
-            const response = await fetch("/api/employees/", {
-                method: "POST",
-                headers: {
-                    "X-CSRFToken": getCsrfToken(),
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payload),
+            this.stepPills.forEach((pill) => {
+                const pillStep = Number(pill.dataset.step);
+                pill.classList.toggle("active", pillStep === this.currentStep);
+                pill.classList.toggle("completed", pillStep < this.currentStep);
             });
 
-            const result = await response.json();
+            this.stepPanels.forEach((panel) => {
+                const panelStep = Number(panel.dataset.step);
+                panel.classList.toggle("active", panelStep === this.currentStep);
+            });
 
-            if (!result.success) {
-                window.alert(result.error || "Failed to save employee.");
-                return;
+            if (this.backBtn) {
+                this.backBtn.disabled = this.currentStep === 1;
             }
 
-            window.location.href = `/employees/${result.data.employee_id}`;
-        } catch (error) {
-            window.alert("Unable to save employee.");
-            console.error(error);
-        } finally {
-            saveButton.disabled = false;
-            saveButton.innerHTML = '<i class="ti ti-device-floppy me-1"></i> Save Employee';
-        }
-    }
-
-    function bindEvents() {
-        document.getElementById("wizard-next")?.addEventListener("click", () => {
-            if (!validateStep(state.step)) {
-                return;
+            if (this.nextBtn) {
+                this.nextBtn.classList.toggle("d-none", this.currentStep === this.totalSteps);
             }
 
-            if (state.step === 4) {
-                const faceInput = document.querySelector('[name="face_image_path"]');
-                state.faceImagePath = faceInput?.value.trim() || "";
-                populateReview();
+            if (this.saveBtn) {
+                this.saveBtn.classList.toggle("d-none", this.currentStep !== this.totalSteps);
             }
 
-            showStep(Math.min(state.step + 1, 5));
-        });
-
-        document.getElementById("wizard-back")?.addEventListener("click", () => {
-            showStep(Math.max(state.step - 1, 1));
-        });
-
-        document.getElementById("wizard-save")?.addEventListener("click", saveEmployee);
-
-        document.getElementById("rfid-start-btn")?.addEventListener("click", startRfidEnrollment);
-        document.getElementById("rfid-retry-btn")?.addEventListener("click", startRfidEnrollment);
-        document.getElementById("rfid-cancel-btn")?.addEventListener("click", cancelEnrollment);
-
-        document.getElementById("fingerprint-start-btn")?.addEventListener("click", startFingerprintEnrollment);
-        document.getElementById("fingerprint-retry-btn")?.addEventListener("click", startFingerprintEnrollment);
-        document.getElementById("fingerprint-cancel-btn")?.addEventListener("click", cancelEnrollment);
-    }
-
-    return {
-        init() {
-            bindEvents();
-            showStep(1);
+            this.collectFormData();
+            this.updateReview();
         },
+
+        nextStep() {
+            this.collectFormData();
+
+            if (this.currentStep === 1 && !this.validateInformation()) {
+                return;
+            }
+
+            this.showStep(this.currentStep + 1);
+        },
+
+        previousStep() {
+            this.showStep(this.currentStep - 1);
+        },
+
+        validateInformation() {
+            const requiredKeys = ["employee_number", "first_name", "second_name", "third_name", "last_name"];
+            const missing = requiredKeys.filter((key) => !this.data[key]);
+
+            if (missing.length > 0) {
+                this.showMessage("Please fill all employee information fields.", "error");
+                return false;
+            }
+
+            return true;
+        },
+
+        setStatus(type, message, state) {
+            const box = type === "fingerprint" ? this.fingerprintStatusBox : this.rfidStatusBox;
+
+            if (!box) {
+                return;
+            }
+
+            box.textContent = message || "";
+            box.classList.remove("is-success", "is-error", "is-warning", "is-running");
+
+            if (state === "success") {
+                box.classList.add("is-success");
+            } else if (state === "error") {
+                box.classList.add("is-error");
+            } else if (state === "cancelled") {
+                box.classList.add("is-warning");
+            } else {
+                box.classList.add("is-running");
+            }
+        },
+
+        async startRfidEnrollment() {
+            this.data.rfid_uid = "";
+            this.updateRfidPreview("—");
+            this.setStatus("rfid", "Starting RFID registration...", "running");
+
+            await this.postJson("/employees/api/enrollment/rfid/start", {});
+            this.startPolling("rfid");
+        },
+
+        async startFingerprintEnrollment() {
+            this.data.fingerprint_position = "";
+            this.updateFingerprintPreview("—");
+            this.setStatus("fingerprint", "Starting fingerprint enrollment...", "running");
+
+            await this.postJson("/employees/api/enrollment/fingerprint/start", {});
+            this.startPolling("fingerprint");
+        },
+
+        async cancelEnrollment(type) {
+            try {
+                await this.postJson("/employees/api/enrollment/cancel", {});
+                this.stopPolling();
+                this.setStatus(type, "Enrollment cancelled.", "cancelled");
+            } catch (error) {
+                this.setStatus(type, error.message, "error");
+            }
+        },
+
+        startPolling(expectedType) {
+            this.stopPolling();
+
+            this.pollTimer = setInterval(() => {
+                this.fetchEnrollmentStatus(expectedType);
+            }, 900);
+
+            this.fetchEnrollmentStatus(expectedType);
+        },
+
+        stopPolling() {
+            if (this.pollTimer) {
+                clearInterval(this.pollTimer);
+                this.pollTimer = null;
+            }
+        },
+
+        async fetchEnrollmentStatus(expectedType) {
+            try {
+                const response = await fetch("/employees/api/enrollment/status", {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json"
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.type && data.type !== expectedType) {
+                    return;
+                }
+
+                const state = data.state || "idle";
+                const message = data.message || "Waiting for enrollment status...";
+
+                this.setStatus(expectedType, message, state);
+
+                if (expectedType === "rfid") {
+                    const uid = data.rfid_uid || data.uid || data.uid_id || data.rfid_id || data.id || data.RFIDUID;
+
+                    if (uid) {
+                        this.data.rfid_uid = String(uid);
+                        this.updateRfidPreview(this.data.rfid_uid);
+                    }
+                }
+
+                if (expectedType === "fingerprint") {
+                    const position = data.fingerprint_position ?? data.position ?? data.slot ?? data.FingerprintPosition;
+
+                    if (position !== undefined && position !== null && position !== "") {
+                        this.data.fingerprint_position = String(position);
+                        this.updateFingerprintPreview(this.data.fingerprint_position);
+                    }
+                }
+
+                this.updateReview();
+
+                if (state === "success" || state === "error" || state === "cancelled") {
+                    this.stopPolling();
+                }
+            } catch (error) {
+                this.setStatus(expectedType, error.message, "error");
+                this.stopPolling();
+            }
+        },
+
+        updateRfidPreview(value) {
+            if (this.rfidPreview) {
+                this.rfidPreview.textContent = value || "—";
+            }
+        },
+
+        updateFingerprintPreview(value) {
+            if (this.fingerprintPreview) {
+                this.fingerprintPreview.textContent = value || "—";
+            }
+        },
+
+        updateReview() {
+            this.collectFormData();
+
+            const fullName = [
+                this.data.first_name,
+                this.data.second_name,
+                this.data.third_name,
+                this.data.last_name
+            ].filter(Boolean).join(" ");
+
+            if (this.review.employee_number) {
+                this.review.employee_number.textContent = this.data.employee_number || "—";
+            }
+
+            if (this.review.full_name) {
+                this.review.full_name.textContent = fullName || "—";
+            }
+
+            if (this.review.rfid) {
+                this.review.rfid.textContent = this.data.rfid_uid || "—";
+            }
+
+            if (this.review.fingerprint) {
+                this.review.fingerprint.textContent = this.data.fingerprint_position || "—";
+            }
+
+            if (this.review.face) {
+                this.review.face.textContent = this.data.face_image_path || "—";
+            }
+        },
+
+        async saveEmployee() {
+            this.collectFormData();
+
+            if (!this.validateInformation()) {
+                this.showStep(1);
+                return;
+            }
+
+            const payload = {
+                employee_number: this.data.employee_number,
+                first_name: this.data.first_name,
+                second_name: this.data.second_name,
+                third_name: this.data.third_name,
+                last_name: this.data.last_name,
+                rfid_uid: this.data.rfid_uid,
+                fingerprint_position: this.data.fingerprint_position,
+                face_image_path: this.data.face_image_path
+            };
+
+            try {
+                this.setButtonLoading(this.saveBtn, true, "Saving...");
+                const result = await this.postJson("/employees/api/enrollment/save", payload);
+
+                if (!result.success) {
+                    throw new Error(result.message || "Save failed.");
+                }
+
+                this.showMessage(result.message || "Employee saved successfully.", "success");
+
+                setTimeout(() => {
+                    window.location.href = "/employees";
+                }, 900);
+            } catch (error) {
+                this.showMessage(error.message, "error");
+            } finally {
+                this.setButtonLoading(this.saveBtn, false);
+            }
+        },
+
+        async postJson(url, payload) {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify(payload || {})
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(data.message || "Request failed.");
+            }
+
+            return data;
+        },
+
+        setButtonLoading(button, isLoading, loadingText) {
+            if (!button) {
+                return;
+            }
+
+            if (isLoading) {
+                button.dataset.originalText = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = loadingText || "Loading...";
+            } else {
+                button.disabled = false;
+
+                if (button.dataset.originalText) {
+                    button.innerHTML = button.dataset.originalText;
+                }
+            }
+        },
+
+        showMessage(message, type) {
+            const alertClass = type === "success" ? "alert-success" : "alert-danger";
+
+            const wrapper = document.createElement("div");
+            wrapper.className = `alert ${alertClass} alert-dismissible fade show mt-3`;
+            wrapper.innerHTML = `
+                <div>${message}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+
+            const cardBody = document.querySelector(".card .card-body");
+
+            if (cardBody) {
+                cardBody.prepend(wrapper);
+            } else {
+                alert(message);
+            }
+
+            setTimeout(() => {
+                wrapper.remove();
+            }, 5000);
+        }
     };
+
+    window.MantrapEmployeeWizard = Wizard;
 })();

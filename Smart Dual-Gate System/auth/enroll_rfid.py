@@ -1,3 +1,26 @@
+import os
+import sys
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+
+import atexit
+import subprocess
+
+def force_restore_uart_pins_after_rfid():
+    try:
+        subprocess.run(["pinctrl", "set", "14", "a0"], check=False)
+        subprocess.run(["pinctrl", "set", "15", "a0"], check=False)
+        print("[RFID_ENROLL] UART pins forced to ALT0 after RFID")
+    except Exception as error:
+        print(f"[RFID_ENROLL] UART force restore warning: {error}")
+
+atexit.register(force_restore_uart_pins_after_rfid)
+
 """
 RFID enrollment helper.
 Waits for any RFID card and writes the detected UID to runtime/enrollment_status.json.
@@ -12,6 +35,26 @@ import RPi.GPIO as GPIO
 from mfrc522 import MFRC522
 
 from hardware import gpio_map
+
+def restore_uart_after_rfid():
+    try:
+        import subprocess
+        import RPi.GPIO as GPIO
+
+        try:
+            GPIO.setwarnings(False)
+            GPIO.cleanup()
+        except Exception:
+            pass
+
+        subprocess.run(["pinctrl", "set", "14", "a0"], check=False)
+        subprocess.run(["pinctrl", "set", "15", "a0"], check=False)
+
+        print("[RFID_ENROLL] UART pins restored after RFID")
+    except Exception as error:
+        print(f"[RFID_ENROLL] UART restore warning: {error}")
+
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 STATUS_FILE = PROJECT_ROOT / "runtime" / "enrollment_status.json"
@@ -83,7 +126,7 @@ def cleanup_rfid():
     reader = None
     time.sleep(0.3)
 
-    print("[RFID_ENROLL] Cleanup done", flush=True)
+    print("[RFID_ENROLL] UART pins restored after RFID and cleanup done", flush=True)
 
 
 def get_card_id(uid):
@@ -142,3 +185,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+restore_uart_after_rfid()
