@@ -1,6 +1,6 @@
 {
-  "state": "RUNNING",
-  "message": "Mantrap process started",
-  "pid": 3074,
-  "updated_at": "2026-05-23T01:15:43.895647+00:00"
+  "state": "STOPPED",
+  "message": "Mantrap process already stopped",
+  "pid": null,
+  "updated_at": "2026-05-23T14:46:03.212371+00:00"
 }

@@ -1,0 +1,260 @@
+<div class="dashboard-card system-control-card">
+    <div class="dashboard-card-header">
+        <div>
+            <h3 class="dashboard-card-title">System Control</h3>
+            <p class="dashboard-card-subtitle">
+                Safe process lifecycle and workflow standby controls
+            </p>
+        </div>
+
+        <span id="system-control-status-badge" class="system-status-badge status-stopped">
+            STOPPED
+        </span>
+    </div>
+
+    <div class="system-control-body">
+        <div class="system-control-actions">
+            <button type="button" class="system-control-btn btn-start" data-system-action="start">
+                <span class="btn-dot"></span>
+                Start System
+            </button>
+
+            <button type="button" class="system-control-btn btn-stop" data-system-action="stop">
+                <span class="btn-dot"></span>
+                Stop System
+            </button>
+
+            <button type="button" class="system-control-btn btn-restart" data-system-action="restart">
+                <span class="btn-dot"></span>
+                Restart System
+            </button>
+
+            <button type="button" class="system-control-btn btn-reset" data-system-action="reset-idle">
+                <span class="btn-dot"></span>
+                Reset to Idle
+            </button>
+        </div>
+
+        <p id="system-control-message" class="system-control-message">
+            Controls manage the mantrap process only. Hardware and cameras remain isolated from the dashboard.
+        </p>
+    </div>
+</div>
+
+<style>
+    .system-control-card {
+        overflow: hidden;
+    }
+
+    .system-control-body {
+        padding-top: 1.2rem;
+    }
+
+    .system-control-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.85rem;
+        align-items: center;
+    }
+
+    .system-control-btn {
+        min-width: 135px;
+        height: 42px;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        padding: 0 1.05rem;
+        font-size: 0.88rem;
+        font-weight: 800;
+        letter-spacing: 0.01em;
+        color: #ffffff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+        cursor: pointer;
+        transition: 0.18s ease;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+        white-space: nowrap;
+    }
+
+    .system-control-btn:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.08);
+    }
+
+    .system-control-btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.9;
+    }
+
+    .btn-start {
+        background: linear-gradient(135deg, #16a34a, #22c55e);
+        border-color: rgba(34, 197, 94, 0.55);
+    }
+
+    .btn-stop {
+        background: linear-gradient(135deg, #b91c1c, #ef4444);
+        border-color: rgba(239, 68, 68, 0.55);
+    }
+
+    .btn-restart {
+        background: linear-gradient(135deg, #0ea5e9, #2563eb);
+        border-color: rgba(59, 130, 246, 0.55);
+    }
+
+    .btn-reset {
+        background: linear-gradient(135deg, #ca8a04, #f59e0b);
+        border-color: rgba(245, 158, 11, 0.55);
+        color: #111827;
+    }
+
+    .system-status-badge {
+        border-radius: 999px;
+        padding: 0.5rem 0.9rem;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        border: 1px solid transparent;
+    }
+
+    .status-running {
+        color: #86efac;
+        background: rgba(34, 197, 94, 0.13);
+        border-color: rgba(34, 197, 94, 0.45);
+    }
+
+    .status-stopped {
+        color: #fca5a5;
+        background: rgba(239, 68, 68, 0.13);
+        border-color: rgba(239, 68, 68, 0.45);
+    }
+
+    .status-working {
+        color: #fde68a;
+        background: rgba(245, 158, 11, 0.13);
+        border-color: rgba(245, 158, 11, 0.45);
+    }
+
+    .system-control-message {
+        margin: 1.1rem 0 0 0;
+        color: #94a3b8;
+        font-size: 0.9rem;
+    }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const buttons = document.querySelectorAll("[data-system-action]");
+    const messageBox = document.getElementById("system-control-message");
+    const statusBadge = document.getElementById("system-control-status-badge");
+
+    function setButtonsDisabled(isDisabled) {
+        buttons.forEach(function (button) {
+            button.disabled = isDisabled;
+        });
+    }
+
+    function setMessage(text, isError = false) {
+        if (!messageBox) {
+            return;
+        }
+
+        messageBox.textContent = text;
+        messageBox.style.color = isError ? "#fca5a5" : "#94a3b8";
+    }
+
+    function setStatus(status) {
+        if (!statusBadge) {
+            return;
+        }
+
+        const normalized = (status || "STOPPED").toUpperCase();
+        statusBadge.textContent = normalized;
+
+        statusBadge.classList.remove("status-running", "status-stopped", "status-working");
+
+        if (normalized === "RUNNING") {
+            statusBadge.classList.add("status-running");
+        } else if (normalized === "STARTING" || normalized === "STOPPING") {
+            statusBadge.classList.add("status-working");
+        } else {
+            statusBadge.classList.add("status-stopped");
+        }
+    }
+
+    async function refreshProcessStatus() {
+        try {
+            const response = await fetch("/api/system/process-status");
+            const result = await response.json();
+
+            if (result.success && result.data) {
+                setStatus(result.data.lifecycle);
+            }
+        } catch (error) {
+            console.warn("Unable to refresh process status", error);
+        }
+    }
+
+    async function runSystemAction(action) {
+        const actionLabel = action.replace("-", " ");
+
+        setButtonsDisabled(true);
+        setStatus("WORKING");
+        setMessage("Running " + actionLabel + " command...");
+
+        try {
+            const response = await fetch("/api/system/" + action, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token() }}"
+                },
+                body: JSON.stringify({})
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                const errorMessage = result.error || "Control command failed.";
+                setMessage(errorMessage, true);
+                await refreshProcessStatus();
+                return;
+            }
+
+            const message = result.data && result.data.message
+                ? result.data.message
+                : "Command completed successfully.";
+
+            setMessage(message, false);
+
+            if (result.data && result.data.process) {
+                setStatus(result.data.process.lifecycle);
+            } else {
+                await refreshProcessStatus();
+            }
+        } catch (error) {
+            setMessage("Unable to contact system control API.", true);
+            await refreshProcessStatus();
+        } finally {
+            setButtonsDisabled(false);
+        }
+    }
+
+    buttons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            runSystemAction(button.dataset.systemAction);
+        });
+    });
+
+    refreshProcessStatus();
+});
+</script>

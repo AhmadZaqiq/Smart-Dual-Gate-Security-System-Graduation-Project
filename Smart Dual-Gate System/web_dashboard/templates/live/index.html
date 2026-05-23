@@ -1,6 +1,80 @@
 {% extends "layouts/base.html" %}
 {% block title %}Live Monitor{% endblock %}
 {% block content %}
+
+<style>
+    .camera-panel {
+        background: #0f172a;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+
+    .camera-panel-header {
+        min-height: 76px;
+        padding: 1rem 1.15rem;
+        background: rgba(15, 23, 42, 0.92);
+        border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    }
+
+    .camera-panel-body {
+        min-height: 300px;
+        background: #000000;
+        border-radius: 0;
+        overflow: hidden;
+    }
+
+    .camera-panel-footer {
+        min-height: 64px;
+        padding: 0.85rem 1rem;
+        background: rgba(15, 23, 42, 0.96);
+        border-top: 1px solid rgba(148, 163, 184, 0.12);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .stream-control-btn {
+        height: 38px;
+        min-width: 132px;
+        border-radius: 0.75rem;
+        padding: 0 0.95rem;
+        border: 1px solid transparent;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        font-size: 0.84rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: 0.16s ease;
+        white-space: nowrap;
+    }
+
+    .stream-control-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .stream-open-btn {
+        color: #93c5fd;
+        background: rgba(59, 130, 246, 0.13);
+        border-color: rgba(59, 130, 246, 0.42);
+    }
+
+    .stream-close-btn {
+        color: #fca5a5;
+        background: rgba(239, 68, 68, 0.12);
+        border-color: rgba(239, 68, 68, 0.42);
+    }
+
+    .stream-control-btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+    }
+</style>
+
 <div class="page-header d-print-none mb-4 hero-header">
     <div class="row align-items-center">
         <div class="col">
@@ -87,12 +161,15 @@
                 </div>
                 <img id="face-stream-image" class="live-stream-image d-none" alt="Face camera stream">
             </div>
-            <div class="card-footer d-flex gap-2">
-                <button type="button" class="btn btn-primary btn-action" data-stream-action data-camera="face" data-action="start">
-                    <i class="ti ti-player-play"></i> Open Stream
+            <div class="camera-panel-footer">
+                <button type="button" class="stream-control-btn stream-open-btn" data-stream-action data-camera="face" data-action="start">
+                    <i class="ti ti-player-play"></i>
+                    <span>Open Stream</span>
                 </button>
-                <button type="button" class="btn btn-outline-danger btn-action" data-stream-action data-camera="face" data-action="stop">
-                    <i class="ti ti-player-stop"></i> Close Stream
+
+                <button type="button" class="stream-control-btn stream-close-btn" data-stream-action data-camera="face" data-action="stop">
+                    <i class="ti ti-player-stop"></i>
+                    <span>Close Stream</span>
                 </button>
             </div>
         </div>
@@ -117,12 +194,15 @@
                 </div>
                 <img id="inner-stream-image" class="live-stream-image d-none" alt="Inner camera stream">
             </div>
-            <div class="card-footer d-flex gap-2">
-                <button type="button" class="btn btn-primary btn-action" data-stream-action data-camera="inner" data-action="start">
-                    <i class="ti ti-player-play"></i> Open Stream
+            <div class="camera-panel-footer">
+                <button type="button" class="stream-control-btn stream-open-btn" data-stream-action data-camera="inner" data-action="start">
+                    <i class="ti ti-player-play"></i>
+                    <span>Open Stream</span>
                 </button>
-                <button type="button" class="btn btn-outline-danger btn-action" data-stream-action data-camera="inner" data-action="stop">
-                    <i class="ti ti-player-stop"></i> Close Stream
+
+                <button type="button" class="stream-control-btn stream-close-btn" data-stream-action data-camera="inner" data-action="stop">
+                    <i class="ti ti-player-stop"></i>
+                    <span>Close Stream</span>
                 </button>
             </div>
         </div>

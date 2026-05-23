@@ -1,0 +1,95 @@
+{% extends "layouts/auth_base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block body %}
+<div class="auth-page">
+    <div class="auth-header text-center mb-4">
+        <div class="auth-logo mb-3"></div>
+        <h1 class="auth-title">Smart Dual-Gate Security System</h1>
+        <p class="auth-subtitle">Mantrap Control Center</p>
+    </div>
+
+    <div class="auth-card">
+        <div class="text-center mb-4">
+            <h2 class="auth-card-title">Secure Sign In</h2>
+            <p class="auth-card-subtitle">
+                Enter your operator credentials to access the control center.
+            </p>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" autocomplete="off">
+            {{ form.hidden_tag() }}
+
+            <div class="mb-3">
+                <label class="form-label">Username</label>
+                {{ form.username(
+                    class_="form-control form-control-lg",
+                    placeholder="Enter username"
+                ) }}
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+
+                <div class="password-field">
+                    {{ form.password(
+                        class_="form-control form-control-lg password-input",
+                        placeholder="Enter password",
+                        id="password-input"
+                    ) }}
+
+                    <button
+                        type="button"
+                        class="password-toggle"
+                        id="password-toggle"
+                        aria-label="Show password"
+                    >
+                        <span id="password-toggle-icon">👁</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-check mb-4">
+                {{ form.remember(class_="form-check-input") }}
+                <label class="form-check-label">
+                    Remember this device
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100 auth-submit-btn">
+                Access Control Center
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const passwordInput = document.getElementById("password-input");
+    const toggleButton = document.getElementById("password-toggle");
+    const toggleIcon = document.getElementById("password-toggle-icon");
+
+    if (!passwordInput || !toggleButton || !toggleIcon) {
+        return;
+    }
+
+    toggleButton.addEventListener("click", function () {
+        const isHidden = passwordInput.type === "password";
+
+        passwordInput.type = isHidden ? "text" : "password";
+        toggleIcon.textContent = isHidden ? "🙈" : "👁";
+        toggleButton.setAttribute(
+            "aria-label",
+            isHidden ? "Hide password" : "Show password"
+        );
+    });
+});
+</script>
+{% endblock %}

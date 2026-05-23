@@ -1,0 +1,97 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Admins{% endblock %}
+
+{% block content %}
+<style>
+    .admin-status-badge {
+        border-radius: 999px;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.76rem;
+        font-weight: 900;
+        border: 1px solid transparent;
+    }
+
+    .admin-status-badge.is-active {
+        color: #86efac;
+        background: rgba(34, 197, 94, 0.13);
+        border-color: rgba(34, 197, 94, 0.45);
+    }
+
+    .admin-status-badge.is-inactive {
+        color: #cbd5e1;
+        background: rgba(148, 163, 184, 0.12);
+        border-color: rgba(148, 163, 184, 0.32);
+    }
+
+    .admin-actions {
+        display: inline-flex;
+        gap: 0.45rem;
+        white-space: nowrap;
+    }
+</style>
+
+{% set title = "Admins" %}
+{% set action_url = url_for('admins.new_admin') %}
+{% set action_label = "Add Admin" %}
+{% include "layouts/partials/_page_header.html" %}
+
+<div class="card hover-lift">
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Admin ID</th>
+                    <th>Full Name</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Last Login</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for admin in admins %}
+                <tr>
+                    <td class="fw-bold">{{ admin.AdminCode }}</td>
+                    <td>{{ admin.FullName }}</td>
+                    <td>{{ admin.UserName }}</td>
+                    <td>{{ admin.Email or '—' }}</td>
+                    <td>
+                        <span class="admin-status-badge {% if admin.IsActive %}is-active{% else %}is-inactive{% endif %}">
+                            {{ 'Active' if admin.IsActive else 'Inactive' }}
+                        </span>
+                    </td>
+                    <td>{{ admin.LastLoginDate or 'Never' }}</td>
+                    <td>
+                        <div class="admin-actions">
+                            <a href="{{ url_for('admins.edit_admin', admin_id=admin.AdminUserID) }}" class="btn btn-sm btn-outline-primary btn-action">
+                                Edit
+                            </a>
+
+                            <a href="{{ url_for('admins.reset_password', admin_id=admin.AdminUserID) }}" class="btn btn-sm btn-outline-warning btn-action">
+                                Reset Password
+                            </a>
+
+                            <form method="post" action="{{ url_for('admins.toggle_admin', admin_id=admin.AdminUserID) }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm {% if admin.IsActive %}btn-outline-danger{% else %}btn-outline-success{% endif %} btn-action">
+                                    {{ 'Deactivate' if admin.IsActive else 'Activate' }}
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-secondary py-4">
+                        No admins found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

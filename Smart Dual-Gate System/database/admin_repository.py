@@ -6,14 +6,16 @@ from database.database_manager import (
 )
 
 
-def create_admin_user(person_id, username, email, password_hash, is_active=1):
+def create_admin_user(admin_code, person_id, username, email, password_hash, is_active=1):
     query = """
         INSERT INTO AdminUser
         (
+            AdminCode,
             PersonID,
             UserName,
             Email,
             PasswordHash,
+            Role,
             IsActive,
             IsDeleted,
             CreationDate,
@@ -26,6 +28,8 @@ def create_admin_user(person_id, username, email, password_hash, is_active=1):
             ?,
             ?,
             ?,
+            'Admin',
+            ?,
             0,
             datetime('now'),
             datetime('now')
@@ -35,6 +39,7 @@ def create_admin_user(person_id, username, email, password_hash, is_active=1):
     admin_id = execute_insert(
         query,
         (
+            admin_code,
             person_id,
             username,
             email,
@@ -53,13 +58,20 @@ def get_admin_by_id(admin_user_id):
     query = """
         SELECT
             A.AdminUserID,
+            A.AdminCode,
             A.PersonID,
             A.UserName,
             A.Email,
             A.PasswordHash,
+            A.Role,
             A.IsActive,
-            P.FirstName || ' ' || P.SecondName || ' ' ||
-            P.ThirdName || ' ' || P.LastName AS FullName
+            A.LastLoginDate,
+            P.FirstName,
+            P.SecondName,
+            P.ThirdName,
+            P.LastName,
+            TRIM(P.FirstName || ' ' || P.SecondName || ' ' ||
+                 P.ThirdName || ' ' || P.LastName) AS FullName
         FROM AdminUser A
         INNER JOIN Person P
             ON P.PersonID = A.PersonID
@@ -71,17 +83,36 @@ def get_admin_by_id(admin_user_id):
     return execute_query_one(query, (admin_user_id,))
 
 
+def get_admin_by_code(admin_code):
+    query = """
+        SELECT
+            AdminUserID,
+            AdminCode,
+            UserName,
+            Email,
+            IsActive
+        FROM AdminUser
+        WHERE AdminCode = ?
+          AND IsDeleted = 0;
+    """
+
+    return execute_query_one(query, (admin_code,))
+
+
 def get_admin_by_username(username):
     query = """
         SELECT
             A.AdminUserID,
+            A.AdminCode,
             A.PersonID,
             A.UserName,
             A.Email,
             A.PasswordHash,
+            A.Role,
             A.IsActive,
-            P.FirstName || ' ' || P.SecondName || ' ' ||
-            P.ThirdName || ' ' || P.LastName AS FullName
+            A.LastLoginDate,
+            TRIM(P.FirstName || ' ' || P.SecondName || ' ' ||
+                 P.ThirdName || ' ' || P.LastName) AS FullName
         FROM AdminUser A
         INNER JOIN Person P
             ON P.PersonID = A.PersonID
@@ -96,20 +127,14 @@ def get_admin_by_username(username):
 def get_admin_by_email(email):
     query = """
         SELECT
-            A.AdminUserID,
-            A.PersonID,
-            A.UserName,
-            A.Email,
-            A.PasswordHash,
-            A.IsActive,
-            P.FirstName || ' ' || P.SecondName || ' ' ||
-            P.ThirdName || ' ' || P.LastName AS FullName
-        FROM AdminUser A
-        INNER JOIN Person P
-            ON P.PersonID = A.PersonID
-        WHERE A.Email = ?
-          AND A.IsDeleted = 0
-          AND P.IsDeleted = 0;
+            AdminUserID,
+            AdminCode,
+            UserName,
+            Email,
+            IsActive
+        FROM AdminUser
+        WHERE Email = ?
+          AND IsDeleted = 0;
     """
 
     return execute_query_one(query, (email,))
@@ -119,32 +144,37 @@ def get_all_admin_users():
     query = """
         SELECT
             A.AdminUserID,
+            A.AdminCode,
             A.PersonID,
             A.UserName,
             A.Email,
+            A.Role,
             A.IsActive,
-            P.FirstName || ' ' || P.SecondName || ' ' ||
-            P.ThirdName || ' ' || P.LastName AS FullName,
+            A.LastLoginDate,
             A.CreationDate,
-            A.LastUpdatedDate
+            A.LastUpdatedDate,
+            TRIM(P.FirstName || ' ' || P.SecondName || ' ' ||
+                 P.ThirdName || ' ' || P.LastName) AS FullName
         FROM AdminUser A
         INNER JOIN Person P
             ON P.PersonID = A.PersonID
         WHERE A.IsDeleted = 0
           AND P.IsDeleted = 0
-        ORDER BY A.AdminUserID DESC;
+        ORDER BY CAST(A.AdminCode AS INTEGER) ASC;
     """
 
     return execute_query(query)
 
 
-def update_admin_user(admin_user_id, username, email, is_active):
+def update_admin_user(admin_user_id, admin_code, username, email, is_active):
     query = """
         UPDATE AdminUser
         SET
+            AdminCode = ?,
             UserName = ?,
             Email = ?,
             IsActive = ?,
+            Role = 'Admin',
             LastUpdatedDate = datetime('now')
         WHERE AdminUserID = ?
           AND IsDeleted = 0;
@@ -153,6 +183,7 @@ def update_admin_user(admin_user_id, username, email, is_active):
     rows = execute_non_query(
         query,
         (
+            admin_code,
             username,
             email,
             is_active,
@@ -176,13 +207,7 @@ def update_admin_password(admin_user_id, password_hash):
           AND IsDeleted = 0;
     """
 
-    rows = execute_non_query(
-        query,
-        (
-            password_hash,
-            admin_user_id
-        )
-    )
+    rows = execute_non_query(query, (password_hash, admin_user_id))
 
     if rows > 0:
         print(f"[DATABASE] Admin password updated: {admin_user_id}", flush=True)
@@ -200,19 +225,10 @@ def set_admin_active_status(admin_user_id, is_active):
           AND IsDeleted = 0;
     """
 
-    rows = execute_non_query(
-        query,
-        (
-            is_active,
-            admin_user_id
-        )
-    )
+    rows = execute_non_query(query, (is_active, admin_user_id))
 
     if rows > 0:
-        print(
-            f"[DATABASE] Admin active status changed: {admin_user_id}",
-            flush=True
-        )
+        print(f"[DATABASE] Admin active status changed: {admin_user_id}", flush=True)
 
     return rows > 0
 

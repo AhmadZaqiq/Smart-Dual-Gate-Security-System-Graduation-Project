@@ -75,6 +75,7 @@ def create_admin_user_table():
         CREATE TABLE IF NOT EXISTS AdminUser
         (
             AdminUserID INTEGER PRIMARY KEY AUTOINCREMENT,
+            AdminCode TEXT UNIQUE,
 
             PersonID INTEGER NOT NULL,
 
@@ -83,7 +84,7 @@ def create_admin_user_table():
 
             PasswordHash TEXT NOT NULL,
 
-            Role TEXT NOT NULL DEFAULT 'Operator',
+            Role TEXT NOT NULL DEFAULT 'Admin',
 
             IsActive INTEGER NOT NULL DEFAULT 1,
             IsDeleted INTEGER NOT NULL DEFAULT 0,

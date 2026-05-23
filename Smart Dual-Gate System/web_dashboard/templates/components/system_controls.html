@@ -1,28 +1,302 @@
-<div class="card system-control-card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
+<div class="system-panel">
+    <div class="system-panel-header">
         <div>
-            <h3 class="card-title mb-0"><i class="ti ti-power me-2"></i>System Control</h3>
-            <div class="text-secondary small">Safe process lifecycle and workflow standby controls</div>
+            <h3>System Control</h3>
+            <p>Safe process lifecycle and workflow standby controls</p>
         </div>
-        <span class="status-pill process-badge" id="process-lifecycle-badge" data-state="UNKNOWN">UNKNOWN</span>
+
+        <span id="system-control-status-badge" class="system-panel-status is-stopped">
+            STOPPED
+        </span>
     </div>
-    <div class="card-body">
-        <div class="d-flex flex-wrap gap-2">
-            <button type="button" class="btn btn-success btn-action system-control-btn" data-action="start">
-                <i class="ti ti-player-play"></i> Start System
-            </button>
-            <button type="button" class="btn btn-danger btn-action system-control-btn" data-action="stop">
-                <i class="ti ti-player-stop"></i> Stop System
-            </button>
-            <button type="button" class="btn btn-warning btn-action system-control-btn" data-action="restart">
-                <i class="ti ti-refresh"></i> Restart System
-            </button>
-            <button type="button" class="btn btn-azure btn-action system-control-btn" data-action="reset-idle">
-                <i class="ti ti-restore"></i> Reset to Idle
-            </button>
-        </div>
-        <p class="text-secondary small mt-3 mb-0" id="process-control-message">
-            Controls manage the mantrap process only. Hardware and cameras remain isolated from the dashboard.
-        </p>
+
+    <div class="system-panel-actions">
+        <button type="button" class="system-panel-btn is-start" data-panel-system-action="start">
+            <span class="system-panel-icon">▶</span>
+            <span>Start System</span>
+        </button>
+
+        <button type="button" class="system-panel-btn is-stop" data-panel-system-action="stop">
+            <span class="system-panel-icon">■</span>
+            <span>Stop System</span>
+        </button>
+
+        <button type="button" class="system-panel-btn is-restart" data-panel-system-action="restart">
+            <span class="system-panel-icon">↻</span>
+            <span>Restart System</span>
+        </button>
+
+        <button type="button" class="system-panel-btn is-reset" data-panel-system-action="reset-idle">
+            <span class="system-panel-icon">⟳</span>
+            <span>Reset to Idle</span>
+        </button>
     </div>
+
+    <p id="system-control-message" class="system-panel-message">
+        Controls manage the mantrap process only. Hardware and cameras remain isolated from the dashboard.
+    </p>
 </div>
+
+<style>
+    /* Hide accidental duplicated control buttons in the top navbar */
+    header [data-system-action],
+    nav [data-system-action],
+    .navbar [data-system-action],
+    .topbar [data-system-action] {
+        display: none !important;
+    }
+
+    .system-panel {
+        background: transparent;
+        border-radius: 0;
+    }
+
+    .system-panel-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        padding-bottom: 1.15rem;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    }
+
+    .system-panel-header h3 {
+        margin: 0;
+        color: #ffffff;
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .system-panel-header p {
+        margin: 0.45rem 0 0 0;
+        color: #8aa0bd;
+        font-size: 0.86rem;
+    }
+
+    .system-panel-status {
+        min-width: 92px;
+        text-align: center;
+        border-radius: 999px;
+        padding: 0.48rem 0.9rem;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        border: 1px solid transparent;
+    }
+
+    .system-panel-status.is-running {
+        color: #86efac;
+        background: rgba(34, 197, 94, 0.12);
+        border-color: rgba(34, 197, 94, 0.45);
+    }
+
+    .system-panel-status.is-stopped {
+        color: #fca5a5;
+        background: rgba(239, 68, 68, 0.12);
+        border-color: rgba(239, 68, 68, 0.45);
+    }
+
+    .system-panel-status.is-working {
+        color: #fde68a;
+        background: rgba(245, 158, 11, 0.12);
+        border-color: rgba(245, 158, 11, 0.45);
+    }
+
+    .system-panel-actions {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(130px, 1fr));
+        gap: 0.9rem;
+        padding-top: 1.25rem;
+        max-width: 760px;
+    }
+
+    .system-panel-btn {
+        height: 44px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 0.75rem;
+        padding: 0 1rem;
+        color: #ffffff;
+        font-size: 0.86rem;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+        box-shadow: none;
+    }
+
+    .system-panel-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .system-panel-btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .system-panel-icon {
+        width: 1.35rem;
+        height: 1.35rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+        background: rgba(255, 255, 255, 0.14);
+    }
+
+    .system-panel-btn.is-start {
+        background: rgba(34, 197, 94, 0.14);
+        border-color: rgba(34, 197, 94, 0.42);
+        color: #86efac;
+    }
+
+    .system-panel-btn.is-stop {
+        background: rgba(239, 68, 68, 0.14);
+        border-color: rgba(239, 68, 68, 0.42);
+        color: #fca5a5;
+    }
+
+    .system-panel-btn.is-restart {
+        background: rgba(59, 130, 246, 0.14);
+        border-color: rgba(59, 130, 246, 0.42);
+        color: #93c5fd;
+    }
+
+    .system-panel-btn.is-reset {
+        background: rgba(245, 158, 11, 0.14);
+        border-color: rgba(245, 158, 11, 0.42);
+        color: #fde68a;
+    }
+
+    .system-panel-message {
+        margin: 1.05rem 0 0 0;
+        color: #8aa0bd;
+        font-size: 0.88rem;
+    }
+
+    @media (max-width: 900px) {
+        .system-panel-actions {
+            grid-template-columns: repeat(2, minmax(130px, 1fr));
+        }
+    }
+
+    @media (max-width: 520px) {
+        .system-panel-header {
+            flex-direction: column;
+        }
+
+        .system-panel-actions {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const buttons = document.querySelectorAll("[data-panel-system-action]");
+    const messageBox = document.getElementById("system-control-message");
+    const statusBadge = document.getElementById("system-control-status-badge");
+
+    function setButtonsDisabled(isDisabled) {
+        buttons.forEach(function (button) {
+            button.disabled = isDisabled;
+        });
+    }
+
+    function setMessage(text, isError = false) {
+        if (!messageBox) {
+            return;
+        }
+
+        messageBox.textContent = text;
+        messageBox.style.color = isError ? "#fca5a5" : "#8aa0bd";
+    }
+
+    function setStatus(status) {
+        if (!statusBadge) {
+            return;
+        }
+
+        const normalized = (status || "STOPPED").toUpperCase();
+        statusBadge.textContent = normalized;
+
+        statusBadge.classList.remove("is-running", "is-stopped", "is-working");
+
+        if (normalized === "RUNNING") {
+            statusBadge.classList.add("is-running");
+        } else if (normalized === "STARTING" || normalized === "STOPPING" || normalized === "WORKING") {
+            statusBadge.classList.add("is-working");
+        } else {
+            statusBadge.classList.add("is-stopped");
+        }
+    }
+
+    async function refreshProcessStatus() {
+        try {
+            const response = await fetch("/api/system/process-status");
+            const result = await response.json();
+
+            if (result.success && result.data) {
+                setStatus(result.data.lifecycle);
+            }
+        } catch (error) {
+            console.warn("Unable to refresh process status", error);
+        }
+    }
+
+    async function runSystemAction(action) {
+        setButtonsDisabled(true);
+        setStatus("WORKING");
+        setMessage("Running control command...");
+
+        try {
+            const response = await fetch("/api/system/" + action, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token() }}"
+                },
+                body: JSON.stringify({})
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                setMessage(result.error || "Control command failed.", true);
+                await refreshProcessStatus();
+                return;
+            }
+
+            const message = result.data && result.data.message
+                ? result.data.message
+                : "Command completed successfully.";
+
+            setMessage(message);
+
+            if (result.data && result.data.process) {
+                setStatus(result.data.process.lifecycle);
+            } else {
+                await refreshProcessStatus();
+            }
+        } catch (error) {
+            setMessage("Unable to contact system control API.", true);
+            await refreshProcessStatus();
+        } finally {
+            setButtonsDisabled(false);
+        }
+    }
+
+    buttons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            runSystemAction(button.dataset.panelSystemAction);
+        });
+    });
+
+    refreshProcessStatus();
+});
+</script>

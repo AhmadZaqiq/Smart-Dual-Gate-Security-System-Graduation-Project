@@ -1,0 +1,140 @@
+{% extends "layouts/base.html" %}
+{% block title %}Live Monitor{% endblock %}
+{% block content %}
+<div class="page-header d-print-none mb-4 hero-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <div class="page-pretitle">Real-time Operations</div>
+            <h2 class="page-title">Live Monitoring</h2>
+            <div class="text-secondary">Dual-camera surveillance with independent stream controls</div>
+        </div>
+    </div>
+</div>
+
+{% include "components/system_controls.html" %}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card status-card hover-lift">
+            <div class="card-body">
+                <div class="status-card-label">Workflow State</div>
+                <span class="status-pill lg" id="live-workflow-state" data-state="UNKNOWN">--</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card status-card hover-lift">
+            <div class="card-body">
+                <div class="status-card-label">Person Count</div>
+                <div class="display-value" id="live-person-count">0</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card status-card hover-lift">
+            <div class="card-body">
+                <div class="status-card-label">Process</div>
+                <span class="status-pill lg" id="live-process-badge" data-state="UNKNOWN">Process: --</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card status-card hover-lift">
+            <div class="card-body">
+                <div class="status-card-label">Alarm</div>
+                <span class="status-pill lg" id="live-alarm-status" data-state="NORMAL">NORMAL</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card status-card">
+            <div class="card-body">
+                <div class="status-card-label">Outer Door</div>
+                <span class="status-pill lg" id="live-outer-door" data-state="UNKNOWN">UNKNOWN</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card status-card">
+            <div class="card-body">
+                <div class="status-card-label">Inner Door</div>
+                <span class="status-pill lg" id="live-inner-door" data-state="UNKNOWN">UNKNOWN</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="camera-panel hover-lift">
+            <div class="camera-panel-header">
+                <div>
+                    <h3 class="mb-0"><i class="ti ti-user-scan me-2"></i>Face Camera</h3>
+                    <div class="text-secondary small" id="face-stream-status-text">Stream offline</div>
+                </div>
+                <span class="status-pill" id="face-stream-health" data-state="OFFLINE">OFFLINE</span>
+            </div>
+            <div class="camera-panel-body">
+                <div class="camera-loading d-none" id="face-stream-loading">
+                    <span class="spinner-border text-azure"></span>
+                </div>
+                <div class="stream-empty-state" id="face-stream-offline">
+                    <i class="ti ti-camera-off display-4 mb-2 d-block"></i>
+                    <p class="mb-0 text-secondary">Face camera stream is not active.</p>
+                </div>
+                <img id="face-stream-image" class="live-stream-image d-none" alt="Face camera stream">
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <button type="button" class="btn btn-primary btn-action" data-stream-action data-camera="face" data-action="start">
+                    <i class="ti ti-player-play"></i> Open Stream
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-action" data-stream-action data-camera="face" data-action="stop">
+                    <i class="ti ti-player-stop"></i> Close Stream
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="camera-panel hover-lift">
+            <div class="camera-panel-header">
+                <div>
+                    <h3 class="mb-0"><i class="ti ti-scan me-2"></i>Inner Camera</h3>
+                    <div class="text-secondary small" id="inner-stream-status-text">Stream offline</div>
+                    <span class="badge bg-azure-lt d-none mt-1" id="inner-stream-source">YOLO Monitor</span>
+                </div>
+                <span class="status-pill" id="inner-stream-health" data-state="OFFLINE">OFFLINE</span>
+            </div>
+            <div class="camera-panel-body">
+                <div class="camera-loading d-none" id="inner-stream-loading">
+                    <span class="spinner-border text-azure"></span>
+                </div>
+                <div class="stream-empty-state" id="inner-stream-offline">
+                    <i class="ti ti-camera-off display-4 mb-2 d-block"></i>
+                    <p class="mb-0 text-secondary">Inner camera uses YOLO during occupancy detection, or preview mode when idle.</p>
+                </div>
+                <img id="inner-stream-image" class="live-stream-image d-none" alt="Inner camera stream">
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <button type="button" class="btn btn-primary btn-action" data-stream-action data-camera="inner" data-action="start">
+                    <i class="ti ti-player-play"></i> Open Stream
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-action" data-stream-action data-camera="inner" data-action="stop">
+                    <i class="ti ti-player-stop"></i> Close Stream
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/live_streams.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    window.MantrapLiveStreams && window.MantrapLiveStreams.init();
+    window.MantrapPolling && window.MantrapPolling.startLiveMonitor();
+});
+</script>
+{% endblock %}
