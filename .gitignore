@@ -1,31 +1,62 @@
-venv/
-
+# Python
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+.Python
 
-logs/
-*.log
+# Virtual environment
+venv/
+.venv/
+env/
 
-.DS_Store
+# Environment files
 .env
+.env.*
+!.env.example
 
-# Database runtime files
-*.db-shm
-*.db-wal
+# Runtime generated files
+runtime/
+**/runtime/*
+!**/runtime/.gitkeep
+*.pid
+*.lock
 
-# Temporary files
+# Runtime status/cache files
+*.json.tmp
+**/runtime/*.json
+
+# Local SQLite/database files
+*.db
+*.sqlite
+*.sqlite3
+**/database/*.db
+**/database/*.sqlite
+**/database/*.sqlite3
+**/backups/*.db
+
+# Backup files and folders
+backup/
+backups/
+github_backup_before_dashboard/
+Smart-Dual-Gate-Security-System-Graduation-Project/
+*.bak
+*.bak*
+*.backup
+*.old
 *.tmp
 *.temp
+*~
 
-# VSCode
+# OS/editor files
+.DS_Store
+Thumbs.db
+*.swp
 .vscode/
-
-# JetBrains
 .idea/
 
-# Python cache
-.pytest_cache/
-
-# Linux
-Thumbs.db
+# Generated logs
+logs/
+**/logs/
+!**/web_dashboard/templates/logs/
+!**/web_dashboard/templates/logs/**
