@@ -441,3 +441,149 @@ if _mantrap_csrf is not None:
         print(f"[EMPLOYEES] Enrollment CSRF exempt warning: {error}")
 # ===== END MANTRAP ENROLLMENT CSRF EXEMPT PATCH =====
 
+
+# ===== MANTRAP EMPLOYEE SOFT DELETE API START =====
+
+import sqlite3 as _soft_delete_sqlite3
+from datetime import datetime as _soft_delete_datetime
+from flask import jsonify as _soft_delete_jsonify
+from web_dashboard.config import Config as _SoftDeleteConfig
+
+
+def _soft_delete_get_database_path():
+    for attr_name in ("DATABASE_PATH", "DB_PATH", "SQLITE_DATABASE_PATH"):
+        db_path = getattr(_SoftDeleteConfig, attr_name, None)
+        if db_path:
+            return db_path
+
+    return _SoftDeleteConfig.PROJECT_ROOT / "database" / "mantrap.db"
+
+
+def _soft_delete_get_columns(cursor, table_name):
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    return [row[1] for row in cursor.fetchall()]
+
+
+def _soft_delete_update_existing_columns(cursor, table_name, key_column, key_value, values):
+    columns = _soft_delete_get_columns(cursor, table_name)
+
+    allowed = {
+        key: value
+        for key, value in values.items()
+        if key in columns and key != key_column
+    }
+
+    if not allowed:
+        return False
+
+    set_sql = ", ".join([f"{key}=?" for key in allowed.keys()])
+    params = list(allowed.values()) + [key_value]
+
+    cursor.execute(
+        f"UPDATE {table_name} SET {set_sql} WHERE {key_column}=?",
+        params,
+    )
+
+    return True
+
+
+@employees_bp.route("/api/<int:employee_id>/soft-delete", methods=["POST"])
+def api_soft_delete_employee(employee_id):
+    db_path = _soft_delete_get_database_path()
+    now = _soft_delete_datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    connection = _soft_delete_sqlite3.connect(str(db_path))
+    connection.row_factory = _soft_delete_sqlite3.Row
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            "SELECT EmployeeID FROM Employee WHERE EmployeeID=?",
+            (employee_id,),
+        )
+        employee = cursor.fetchone()
+
+        if not employee:
+            return _soft_delete_jsonify({
+                "success": False,
+                "message": "Employee was not found.",
+            }), 404
+
+        # Delete:
+        # Keep employee in database, but hide from dashboard list.
+        updated_employee = _soft_delete_update_existing_columns(
+            cursor,
+            "Employee",
+            "EmployeeID",
+            employee_id,
+            {
+                "IsDeleted": 1,
+                "IsActive": 0,
+                "DeletedDate": now,
+                "DeletedAt": now,
+                "ModifiedDate": now,
+                "UpdatedAt": now,
+            },
+        )
+
+        if not updated_employee:
+            return _soft_delete_jsonify({
+                "success": False,
+                "message": "Employee table does not contain expected delete columns.",
+            }), 500
+
+        # Disable authentication for the deleted employee, but keep the data.
+        try:
+            _soft_delete_update_existing_columns(
+                cursor,
+                "EmployeeAuthentication",
+                "EmployeeID",
+                employee_id,
+                {
+                    "IsActive": 0,
+                    "IsDeleted": 1,
+                    "DeletedDate": now,
+                    "DeletedAt": now,
+                    "ModifiedDate": now,
+                    "UpdatedAt": now,
+                },
+            )
+        except Exception:
+            pass
+
+        connection.commit()
+
+        return _soft_delete_jsonify({
+            "success": True,
+            "message": "Employee deleted successfully.",
+            "employee_id": employee_id,
+        })
+
+    except Exception as error:
+        connection.rollback()
+
+        return _soft_delete_jsonify({
+            "success": False,
+            "message": f"Delete failed: {error}",
+        }), 500
+
+    finally:
+        connection.close()
+
+
+# Exempt only this internal JavaScript API from CSRF.
+try:
+    from web_dashboard.extensions import csrf as _soft_delete_csrf
+except Exception:
+    _soft_delete_csrf = None
+
+if _soft_delete_csrf is not None:
+    try:
+        api_soft_delete_employee = _soft_delete_csrf.exempt(api_soft_delete_employee)
+        print("[EMPLOYEES] Delete API CSRF exempt enabled")
+    except Exception as error:
+        print(f"[EMPLOYEES] Delete CSRF exempt warning: {error}")
+
+# ===== MANTRAP EMPLOYEE SOFT DELETE API END =====
+

@@ -78,7 +78,7 @@
             </div>
 
             <div class="col-md-2">
-                <button class="btn btn-primary btn-action">
+                <button class="btn btn-primary btn-action employees-search-btn">
                     Search
                 </button>
             </div>
@@ -103,7 +103,7 @@
 
             <tbody>
                 {% for row in employees %}
-                <tr>
+                <tr data-employee-row="{{ row.EmployeeID }}">
                     <td>{{ row.EmployeeID }}</td>
                     <td>{{ row.EmployeeNumber }}</td>
                     <td>{{ row.FullName }}</td>
@@ -145,6 +145,15 @@
                             >
                                 Edit
                             </a>
+
+                            <button
+                                type="button"
+                                class="btn btn-sm employee-delete-btn"
+                                data-employee-id="{{ row.EmployeeID }}"
+                                data-employee-name="{{ row.FullName }}"
+                            >
+                                Delete
+                            </button>
                         </div>
                     </td>
                 </tr>

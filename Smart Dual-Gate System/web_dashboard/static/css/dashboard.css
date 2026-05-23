@@ -1354,3 +1354,141 @@ form button.btn-primary {
 
 /* ===== FIX OPEN LIVE MONITOR BUTTON END ===== */
 
+
+/* ===== FIX EMPLOYEES SEARCH BUTTON START ===== */
+
+.employees-search-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    min-height: 40px !important;
+    padding: 0.52rem 1rem !important;
+    border-radius: 14px !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
+    line-height: 1.1 !important;
+    text-align: center !important;
+}
+
+@media (max-width: 768px) {
+    .employees-search-btn {
+        width: 100% !important;
+        min-width: 100% !important;
+    }
+}
+
+/* ===== FIX EMPLOYEES SEARCH BUTTON END ===== */
+
+
+/* ===== FIX PAGE HEADER TEXT SPACING START ===== */
+
+/* Fix overlapping page titles and subtitles */
+.page-header,
+.hero-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.30rem;
+    margin-bottom: 1.45rem !important;
+    padding-top: 0.35rem;
+}
+
+.page-pretitle,
+.hero-header .page-pretitle {
+    display: block;
+    margin-bottom: 0.18rem !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+}
+
+.page-title,
+.hero-header .page-title,
+h1.page-title,
+h2.page-title {
+    display: block;
+    margin: 0 !important;
+    line-height: 1.08 !important;
+    letter-spacing: 0.01em;
+}
+
+.page-header .text-secondary,
+.hero-header .text-secondary {
+    display: block;
+    margin-top: 0.16rem !important;
+    line-height: 1.45 !important;
+    max-width: 760px;
+}
+
+/* Some pages use title/subtitle without the exact hero-header structure */
+.card + .page-header,
+.page-header + .card,
+.hero-header + .card {
+    margin-top: 1.10rem;
+}
+
+/* Live monitor and settings pages need extra breathing room under the sticky top status bar */
+.main-content .page-header,
+.main-content .hero-header,
+.content .page-header,
+.content .hero-header {
+    padding-top: 0.75rem;
+}
+
+/* Prevent long subtitles from touching titles on smaller screens */
+@media (max-width: 768px) {
+    .page-header,
+    .hero-header {
+        gap: 0.40rem;
+        margin-bottom: 1.25rem !important;
+    }
+
+    .page-title,
+    .hero-header .page-title {
+        line-height: 1.14 !important;
+    }
+
+    .page-header .text-secondary,
+    .hero-header .text-secondary {
+        line-height: 1.50 !important;
+    }
+}
+
+/* ===== FIX PAGE HEADER TEXT SPACING END ===== */
+
+
+/* ===== EMPLOYEE DELETE BUTTON STYLE START ===== */
+
+.employee-delete-btn {
+    color: #fee2e2 !important;
+    background:
+        linear-gradient(135deg, rgba(127, 29, 29, 0.96), rgba(220, 38, 38, 0.76)) !important;
+    border: 1px solid rgba(248, 113, 113, 0.52) !important;
+    min-width: 82px !important;
+    min-height: 32px !important;
+    padding: 0.32rem 0.70rem !important;
+    border-radius: 12px !important;
+    font-size: 0.78rem !important;
+    font-weight: 800 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.35rem !important;
+    white-space: nowrap !important;
+}
+
+.employee-delete-btn:hover {
+    color: #ffffff !important;
+    background:
+        linear-gradient(135deg, rgba(153, 27, 27, 1), rgba(239, 68, 68, 0.88)) !important;
+    border-color: rgba(252, 165, 165, 0.82) !important;
+}
+
+.employees-actions {
+    gap: 0.50rem !important;
+}
+
+/* ===== EMPLOYEE DELETE BUTTON STYLE END ===== */
+

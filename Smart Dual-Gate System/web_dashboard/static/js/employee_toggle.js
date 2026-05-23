@@ -73,3 +73,77 @@ window.MantrapEmployeeToggle = (function () {
         init: bindToggles
     };
 })();
+
+
+/* ===== EMPLOYEE SOFT DELETE JS START ===== */
+(function () {
+    "use strict";
+
+    async function softDeleteEmployee(button) {
+        const employeeId = button.dataset.employeeId;
+        const employeeName = button.dataset.employeeName || "this employee";
+
+        if (!employeeId) {
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `Delete ${employeeName}?`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        const originalHtml = button.innerHTML;
+
+        try {
+            button.disabled = true;
+            button.innerHTML = "Deleting...";
+
+            const response = await fetch(`/employees/api/${employeeId}/soft-delete`, {
+                method: "POST",
+                headers: {
+                    "Accept": "application/json"
+                }
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || "Delete failed.");
+            }
+
+            const row = document.querySelector(`[data-employee-row="${employeeId}"]`);
+
+            if (row) {
+                row.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+                row.style.opacity = "0";
+                row.style.transform = "translateX(12px)";
+
+                setTimeout(() => {
+                    row.remove();
+                }, 220);
+            }
+        } catch (error) {
+            alert(error.message);
+            button.disabled = false;
+            button.innerHTML = originalHtml;
+        }
+    }
+
+    function bindSoftDeleteButtons() {
+        document.querySelectorAll(".employee-delete-btn").forEach((button) => {
+            if (button.dataset.boundDelete === "1") {
+                return;
+            }
+
+            button.dataset.boundDelete = "1";
+            button.addEventListener("click", () => softDeleteEmployee(button));
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", bindSoftDeleteButtons);
+})();
+/* ===== EMPLOYEE SOFT DELETE JS END ===== */
+
