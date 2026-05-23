@@ -184,7 +184,7 @@ window.MantrapPolling = (function () {
                 }
             };
             tick();
-            setInterval(tick, 2000);
+            setInterval(tick, 800);
         },
         startOverviewStatus() {
             const tick = async () => {
@@ -197,7 +197,7 @@ window.MantrapPolling = (function () {
                 }
             };
             tick();
-            setInterval(tick, 2000);
+            setInterval(tick, 800);
         },
         startLiveMonitor() {
             const tick = async () => {

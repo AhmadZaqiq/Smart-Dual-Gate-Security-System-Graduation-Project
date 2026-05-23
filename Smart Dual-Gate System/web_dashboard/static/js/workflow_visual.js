@@ -12,9 +12,22 @@ window.MantrapWorkflow = (function () {
         lockdown: "ti-alert-triangle",
     };
 
+    const STAGE_TAGS = {
+        outer_door: "Entry",
+        occupancy: "AI Check",
+        rfid: "Identity",
+        fingerprint: "Identity",
+        face: "Identity",
+        behavior: "Risk Check",
+        chamber: "Secure Area",
+        inner_door: "Exit",
+        granted: "Decision",
+        lockdown: "Critical",
+    };
+
     function createNode(stage) {
         const node = document.createElement("div");
-        node.className = "workflow-node";
+        node.className = "workflow-node workflow-pro-node";
 
         if (stage.active) {
             node.classList.add("active");
@@ -28,33 +41,45 @@ window.MantrapWorkflow = (function () {
             node.classList.add("lockdown-active");
         }
 
-        const icon = document.createElement("div");
-        icon.className = "workflow-node-icon";
         const iconClass = STAGE_ICONS[stage.id] || "ti-shield-check";
+        const tagText = STAGE_TAGS[stage.id] || "Stage";
+
+        const icon = document.createElement("div");
+        icon.className = "workflow-node-icon workflow-pro-node-icon";
         icon.innerHTML = `<i class="ti ${iconClass}"></i>`;
 
+        const content = document.createElement("div");
+        content.className = "workflow-pro-node-content";
+
         const label = document.createElement("div");
-        label.className = "workflow-node-label";
+        label.className = "workflow-node-label workflow-pro-node-label";
         label.textContent = stage.label;
 
+        const tag = document.createElement("div");
+        tag.className = "workflow-pro-node-tag";
+        tag.textContent = tagText;
+
+        content.appendChild(label);
+        content.appendChild(tag);
+
         node.appendChild(icon);
-        node.appendChild(label);
+        node.appendChild(content);
 
         return node;
     }
 
-    function createArrow() {
-        const arrow = document.createElement("div");
-        arrow.className = "workflow-arrow";
-        arrow.innerHTML = '<i class="ti ti-arrow-right"></i>';
-        return arrow;
+    function createConnector() {
+        const connector = document.createElement("div");
+        connector.className = "workflow-arrow workflow-pro-connector";
+        connector.innerHTML = '<span></span><i class="ti ti-chevron-right"></i>';
+        return connector;
     }
 
     function renderTrack(workflow) {
         const track = document.getElementById("workflow-track");
         const currentLabel = document.getElementById("workflow-current-label");
 
-        if (!track || !workflow) {
+        if (!track || !workflow || !Array.isArray(workflow.stages)) {
             return;
         }
 
@@ -70,7 +95,7 @@ window.MantrapWorkflow = (function () {
             track.appendChild(createNode(stage));
 
             if (index < workflow.stages.length - 1) {
-                track.appendChild(createArrow());
+                track.appendChild(createConnector());
             }
         });
     }

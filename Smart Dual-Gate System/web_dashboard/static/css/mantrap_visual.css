@@ -1,127 +1,152 @@
-.mantrap-visual-card .mantrap-stage {
-    display: grid;
-    grid-template-columns: 1fr 1.4fr 1fr;
-    gap: 1rem;
-    min-height: 220px;
+.mantrap-visual-3d-card {
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 15% 0%, rgba(34, 211, 238, 0.08), transparent 34%),
+        linear-gradient(180deg, rgba(16, 26, 45, 0.98), rgba(8, 15, 28, 0.98));
+    border: 1px solid rgba(34, 211, 238, 0.14);
+}
+
+.mantrap-3d-header {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    background: linear-gradient(90deg, rgba(15, 23, 42, 0.92), rgba(8, 15, 28, 0.86));
+}
+
+.mantrap-3d-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.mantrap-3d-body {
     padding: 1rem;
-    border-radius: 16px;
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.95));
+}
+
+.mantrap-3d-shell {
+    position: relative;
+    min-height: 420px;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background:
+        radial-gradient(circle at 50% 10%, rgba(34, 211, 238, 0.08), transparent 42%),
+        linear-gradient(180deg, rgba(2, 6, 23, 0.98), rgba(7, 13, 24, 0.98));
     transition: box-shadow 0.35s ease, border-color 0.35s ease;
-    border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.mantrap-3d-shell::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(rgba(34, 211, 238, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(34, 211, 238, 0.04) 1px, transparent 1px);
+    background-size: 42px 42px;
+    opacity: 0.45;
+    z-index: 2;
 }
 
 #mantrap-stage[data-mode="normal"] {
-    box-shadow: 0 0 30px rgba(34, 211, 238, 0.15);
+    border-color: rgba(34, 211, 238, 0.18);
+    box-shadow: 0 0 34px rgba(34, 211, 238, 0.16);
 }
 
 #mantrap-stage[data-mode="warning"] {
-    box-shadow: 0 0 34px rgba(245, 158, 11, 0.28);
+    border-color: rgba(245, 158, 11, 0.38);
+    box-shadow: 0 0 38px rgba(245, 158, 11, 0.28);
 }
 
 #mantrap-stage[data-mode="lockdown"] {
-    box-shadow: 0 0 38px rgba(239, 68, 68, 0.35);
+    border-color: rgba(239, 68, 68, 0.45);
+    box-shadow: 0 0 42px rgba(239, 68, 68, 0.36);
+    animation: mantrap-lockdown-glow 1.35s ease-in-out infinite;
 }
 
-.mantrap-zone {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
+@keyframes mantrap-lockdown-glow {
+    0%, 100% {
+        box-shadow: 0 0 28px rgba(239, 68, 68, 0.22);
+    }
+    50% {
+        box-shadow: 0 0 52px rgba(239, 68, 68, 0.48);
+    }
 }
 
-.zone-label {
-    font-size: 0.8rem;
-    letter-spacing: 0.08em;
+.mantrap-3d-canvas-wrap {
+    position: relative;
+    min-height: 420px;
+    cursor: grab;
+}
+
+.mantrap-3d-canvas-wrap:active {
+    cursor: grabbing;
+}
+
+#mantrap-3d-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 1;
+}
+
+.mantrap-3d-overlay {
+    position: absolute;
+    z-index: 4;
+    min-width: 190px;
+    padding: 0.75rem 0.9rem;
+    border-radius: 14px;
+    background: rgba(8, 15, 28, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.24);
+}
+
+.mantrap-3d-overlay.top-left {
+    left: 1rem;
+    top: 1rem;
+}
+
+.mantrap-3d-overlay.top-right {
+    right: 1rem;
+    top: 1rem;
+    text-align: right;
+}
+
+.overlay-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
     text-transform: uppercase;
     color: #94a3b8;
+    margin-bottom: 0.25rem;
 }
 
-.door-panel {
-    position: relative;
-    width: 100%;
-    max-width: 120px;
-    height: 120px;
-    perspective: 700px;
+.overlay-value {
+    color: #e2e8f0;
+    font-size: 0.86rem;
+    font-weight: 700;
 }
 
-.door-leaf {
+#visual-person-count {
+    font-size: 1.5rem;
+    color: #67e8f9;
+}
+
+.mantrap-3d-hint {
     position: absolute;
-    top: 10%;
-    width: 46%;
-    height: 80%;
-    background: linear-gradient(180deg, #334155, #1e293b);
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    border-radius: 6px;
-    transition: transform 0.55s ease;
-}
-
-.door-leaf-left {
-    left: 4%;
-    transform-origin: left center;
-}
-
-.door-leaf-right {
-    right: 4%;
-    transform-origin: right center;
-}
-
-.door-panel[data-state="OPEN"] .door-leaf-left {
-    transform: rotateY(-62deg);
-}
-
-.door-panel[data-state="OPEN"] .door-leaf-right {
-    transform: rotateY(62deg);
-}
-
-.door-panel[data-state="CLOSED"] .door-leaf-left,
-.door-panel[data-state="CLOSED"] .door-leaf-right {
-    transform: rotateY(0deg);
-}
-
-.door-panel[data-state="UNKNOWN"] .door-leaf {
-    background: linear-gradient(180deg, #475569, #334155);
-    opacity: 0.75;
-}
-
-.chamber-body {
-    width: 100%;
-    min-height: 150px;
-    border-radius: 14px;
-    border: 1px dashed rgba(34, 211, 238, 0.35);
-    background: radial-gradient(circle at center, rgba(34, 211, 238, 0.08), transparent 70%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    padding: 1rem;
-}
-
-.workflow-label {
-    font-size: 0.85rem;
-    color: #cbd5e1;
-}
-
-.person-dots {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-
-.person-dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #22d3ee;
-    box-shadow: 0 0 12px rgba(34, 211, 238, 0.8);
-    animation: pulse-dot 1.4s ease-in-out infinite;
-}
-
-@keyframes pulse-dot {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.2); opacity: 0.75; }
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    z-index: 4;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(8, 15, 28, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+    font-size: 0.76rem;
+    backdrop-filter: blur(10px);
 }
 
 .mantrap-legend {
@@ -143,9 +168,65 @@
 .legend-open { background: #22d3ee; }
 .legend-closed { background: #10b981; }
 .legend-unknown { background: #64748b; }
+.legend-warning { background: #f59e0b; }
+.legend-lockdown { background: #ef4444; }
 
 @media (max-width: 992px) {
-    .mantrap-visual-card .mantrap-stage {
-        grid-template-columns: 1fr;
+    .mantrap-3d-shell,
+    .mantrap-3d-canvas-wrap {
+        min-height: 360px;
     }
+
+    .mantrap-3d-overlay {
+        min-width: 150px;
+    }
+}
+
+@media (max-width: 768px) {
+    .mantrap-3d-header {
+        align-items: flex-start !important;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .mantrap-3d-header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .mantrap-3d-shell,
+    .mantrap-3d-canvas-wrap {
+        min-height: 320px;
+    }
+
+    .mantrap-3d-overlay {
+        position: relative;
+        left: auto !important;
+        right: auto !important;
+        top: auto !important;
+        margin: 0.75rem;
+        display: inline-block;
+    }
+
+    .mantrap-3d-hint {
+        display: none;
+    }
+}
+
+/* Move 3D control hint away from the model */
+.mantrap-3d-hint {
+    top: 1rem;
+    bottom: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+}
+
+/* Move 3D control hint away from the model */
+.mantrap-3d-hint {
+    top: 1rem;
+    bottom: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
 }

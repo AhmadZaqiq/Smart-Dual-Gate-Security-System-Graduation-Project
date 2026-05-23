@@ -1,39 +1,48 @@
-<div class="card mantrap-visual-card mb-4" id="mantrap-visual-root">
-    <div class="card-header d-flex justify-content-between align-items-center">
+<div class="card mantrap-visual-card mantrap-visual-3d-card mb-4" id="mantrap-visual-root">
+    <div class="card-header mantrap-3d-header d-flex justify-content-between align-items-center">
         <div>
-            <h3 class="card-title mb-0"><i class="ti ti-building-fortress me-2"></i>Mantrap Visual Model</h3>
-            <div class="text-secondary small">Live chamber, door, and occupancy representation</div>
+            <h3 class="card-title mb-0">
+                <i class="ti ti-building-fortress me-2"></i>Mantrap 3D Visual Model
+            </h3>
+            <div class="text-secondary small">Interactive live chamber, doors, and occupancy representation</div>
         </div>
-        <span class="badge" id="mantrap-visual-mode-badge">NORMAL</span>
+
+        <div class="mantrap-3d-header-actions">
+            <span class="badge" id="mantrap-visual-mode-badge">NORMAL</span>
+            <button type="button" class="btn btn-sm btn-outline-info" id="mantrap-3d-reset-view">
+                <i class="ti ti-refresh me-1"></i>Reset View
+            </button>
+        </div>
     </div>
-    <div class="card-body">
-        <div class="mantrap-stage" id="mantrap-stage" data-mode="normal">
-            <div class="mantrap-zone outer-zone">
-                <div class="zone-label">Outer Door</div>
-                <div class="door-panel outer-door" id="visual-outer-door" data-state="unknown">
-                    <div class="door-leaf door-leaf-left"></div>
-                    <div class="door-leaf door-leaf-right"></div>
+
+    <div class="card-body mantrap-3d-body">
+        <div class="mantrap-3d-shell" id="mantrap-stage" data-mode="normal">
+            <div class="mantrap-3d-canvas-wrap" id="mantrap-3d-canvas-wrap">
+                <canvas id="mantrap-3d-canvas"></canvas>
+
+                <div class="mantrap-3d-overlay top-left">
+                    <div class="overlay-label">Workflow</div>
+                    <div class="overlay-value" id="visual-workflow-label">Workflow: --</div>
                 </div>
-            </div>
-            <div class="mantrap-zone chamber-zone">
-                <div class="zone-label">Secure Chamber</div>
-                <div class="chamber-body">
-                    <div class="workflow-label" id="visual-workflow-label">Workflow: --</div>
-                    <div class="person-dots" id="visual-person-dots"></div>
+
+                <div class="mantrap-3d-overlay top-right">
+                    <div class="overlay-label">Detected Persons</div>
+                    <div class="overlay-value" id="visual-person-count">0</div>
                 </div>
-            </div>
-            <div class="mantrap-zone inner-zone">
-                <div class="zone-label">Inner Door</div>
-                <div class="door-panel inner-door" id="visual-inner-door" data-state="unknown">
-                    <div class="door-leaf door-leaf-left"></div>
-                    <div class="door-leaf door-leaf-right"></div>
+
+                <div class="mantrap-3d-hint">
+                    <i class="ti ti-hand-move me-1"></i>
+                    Drag to rotate • Scroll to zoom
                 </div>
             </div>
         </div>
+
         <div class="mantrap-legend mt-3">
             <span><i class="legend-dot legend-open"></i> Open</span>
             <span><i class="legend-dot legend-closed"></i> Closed</span>
             <span><i class="legend-dot legend-unknown"></i> Unknown</span>
+            <span><i class="legend-dot legend-warning"></i> Warning</span>
+            <span><i class="legend-dot legend-lockdown"></i> Lockdown</span>
         </div>
     </div>
 </div>
