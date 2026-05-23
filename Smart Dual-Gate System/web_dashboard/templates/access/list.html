@@ -1,0 +1,17 @@
+{% extends "layouts/base.html" %}
+{% block title %}Access Sessions{% endblock %}
+{% block content %}
+{% set title = "Access Sessions" %}{% include "layouts/partials/_page_header.html" %}
+<div class="card mb-3 page-filters hover-lift"><div class="card-body"><form class="row g-2" method="get">
+    <div class="col-md-3"><input type="text" name="q" class="form-control" placeholder="Search employee..." value="{{ filters.q }}"></div>
+    <div class="col-md-2"><select name="status" class="form-select"><option value="">All Status</option><option value="ACTIVE" {% if filters.status=='ACTIVE' %}selected{% endif %}>ACTIVE</option><option value="COMPLETED" {% if filters.status=='COMPLETED' %}selected{% endif %}>COMPLETED</option></select></div>
+    <div class="col-md-2"><input type="date" name="date_from" class="form-control" value="{{ filters.date_from }}"></div>
+    <div class="col-md-2"><input type="date" name="date_to" class="form-control" value="{{ filters.date_to }}"></div>
+    <div class="col-md-2"><button class="btn btn-primary w-100">Filter</button></div>
+</form></div></div>
+<div class="card"><div class="table-responsive"><table class="table table-vcenter card-table table-striped"><thead><tr><th>ID</th><th>Employee</th><th>Entry</th><th>Exit</th><th>Duration</th><th>Status</th><th></th></tr></thead><tbody>
+{% for row in sessions %}<tr><td>{{ row.AccessSessionID }}</td><td>{{ row.FullName or 'Unknown' }}</td><td>{{ row.EntryTime or '-' }}</td><td>{{ row.ExitTime or '-' }}</td><td>{{ row.SessionDurationSeconds or '-' }}s</td><td><span class="badge {{ row.FinalStatus|badge_class }}">{{ row.FinalStatus|humanize }}</span></td><td><a href="{{ url_for('access.session_detail', session_id=row.AccessSessionID) }}" class="btn btn-sm btn-outline-primary">Details</a></td></tr>
+{% else %}<tr><td colspan="7" class="text-secondary text-center">No access sessions found.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% include "components/pagination.html" %}
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "layouts/base.html" %}
+{% block title %}Access Session #{{ session.AccessSessionID }}{% endblock %}
+{% block content %}
+{% set title = "Access Session #" ~ session.AccessSessionID %}{% include "layouts/partials/_page_header.html" %}
+<div class="row mb-4"><div class="col-lg-6"><div class="card"><div class="card-body">
+    <dl class="row"><dt class="col-5">Employee</dt><dd class="col-7">{{ session.FullName }}</dd>
+    <dt class="col-5">Number</dt><dd class="col-7">{{ session.EmployeeNumber }}</dd>
+    <dt class="col-5">Entry</dt><dd class="col-7">{{ session.EntryTime }}</dd>
+    <dt class="col-5">Exit</dt><dd class="col-7">{{ session.ExitTime or '-' }}</dd>
+    <dt class="col-5">Duration</dt><dd class="col-7">{{ session.SessionDurationSeconds or '-' }} sec</dd>
+    <dt class="col-5">Status</dt><dd class="col-7"><span class="badge {{ session.FinalStatus|badge_class }}">{{ session.FinalStatus }}</span></dd>
+    <dt class="col-5">Notes</dt><dd class="col-7">{{ session.Notes or '-' }}</dd></dl>
+</div></div></div></div>
+<div class="card"><div class="card-header"><h3 class="card-title">Authentication Attempts</h3></div><div class="table-responsive"><table class="table table-vcenter card-table"><thead><tr><th>ID</th><th>RFID</th><th>Fingerprint</th><th>Face</th><th>Behavior</th><th>Result</th></tr></thead><tbody>
+{% for a in attempts %}<tr><td>{{ a.AuthenticationAttemptID }}</td><td>{{ a.RFIDStatus }}</td><td>{{ a.FingerprintStatus }}</td><td>{{ a.FaceRecognitionStatus }}</td><td>{{ a.BehaviorStatus }}</td><td><span class="badge {{ a.FinalResult|badge_class }}">{{ a.FinalResult }}</span></td></tr>
+{% else %}<tr><td colspan="6" class="text-secondary">No linked attempts.</td></tr>{% endfor %}
+</tbody></table></div></div>
+<a href="{{ url_for('access.list_sessions') }}" class="btn btn-secondary mt-3">Back</a>
+{% endblock %}

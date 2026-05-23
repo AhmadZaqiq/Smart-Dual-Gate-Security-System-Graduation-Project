@@ -1,0 +1,12 @@
+{
+  "updated_at": "2026-05-23T01:16:34.143247+00:00",
+  "fsm_state": "AUTHENTICATION_PROCESSING",
+  "system_online": true,
+  "outer_door": "closed",
+  "inner_door": "closed",
+  "yolo_running": false,
+  "yolo_person_count": 0,
+  "stream_available": false,
+  "active_session_id": null,
+  "alarm_active": false
+}

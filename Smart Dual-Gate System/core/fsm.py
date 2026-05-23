@@ -10,9 +10,50 @@ from database import system_logger
 from database.access_session_repository import finish_access_session
 from database.security_event_repository import create_security_event
 from utils import notification_manager
+from core import system_status
+from core import system_commands
 
 
 class MantrapFSM:
+
+    def _publish_runtime_status(self, **extra_fields):
+        try:
+            outer_door = "closed" if devices.is_outer_door_closed() else "open"
+            inner_door = "closed" if devices.is_inner_door_closed() else "open"
+        except Exception:
+            outer_door = "unknown"
+            inner_door = "unknown"
+
+        person_count = 0
+        yolo_running = False
+        stream_available = False
+
+        try:
+            yolo_running = yolo_room_monitor.is_monitor_running()
+            if yolo_running:
+                person_count = yolo_room_monitor.get_detected_count()
+                stream_available = True
+        except Exception:
+            pass
+
+        alarm_active = self.current_state in (
+            states.MULTI_PERSON_WARNING,
+            states.SECURITY_LOCKDOWN,
+            states.ERROR_STATE,
+        )
+
+        system_status.update_status_snapshot(
+            fsm_state=self.current_state,
+            system_online=True,
+            outer_door=outer_door,
+            inner_door=inner_door,
+            yolo_running=yolo_running,
+            yolo_person_count=person_count,
+            stream_available=stream_available,
+            active_session_id=authentication_manager.get_current_access_session_id(),
+            alarm_active=alarm_active,
+            **extra_fields,
+        )
 
     def __init__(self):
         self.current_state = states.SYSTEM_OFF
@@ -29,6 +70,7 @@ class MantrapFSM:
             f"State changed: {self.current_state} -> {new_state}"
         )
         self.current_state = new_state
+        self._publish_runtime_status()
 
     def reset_warning_data(self):
         self.warning_start_time = None
@@ -52,6 +94,7 @@ class MantrapFSM:
 
         self.change_state(states.IDLE_OUTER_OPEN)
         system_logger.log_info("System started")
+        self._publish_runtime_status()
 
     def stop_system(self):
         authentication_manager.stop_authentication_modules()
@@ -63,12 +106,46 @@ class MantrapFSM:
 
         self.change_state(states.SYSTEM_OFF)
         system_logger.log_info("System stopped")
+        system_status.update_status_snapshot(system_online=False)
+
+    def reset_to_idle_standby(self):
+        if self.current_state == states.SECURITY_LOCKDOWN:
+            system_logger.log_security("Reset to idle rejected during lockdown")
+            return False
+
+        authentication_manager.stop_authentication_modules()
+        yolo_room_monitor.stop_room_monitor()
+        indicators.stop_alarm()
+
+        devices.set_red_status()
+        devices.unlock_outer_solenoid()
+        devices.lock_inner_solenoid()
+
+        self.reset_warning_data()
+        self.reset_door_tracking()
+        self.wait_new_outer_open_after_cancel = False
+
+        self.change_state(states.IDLE_OUTER_OPEN)
+        system_logger.log_info("System reset to idle standby from dashboard command")
+        return True
+
+    def process_dashboard_commands(self):
+        command = system_commands.consume_pending_command()
+
+        if not command:
+            return
+
+        command_type = command.get("type")
+
+        if command_type == "RESET_TO_IDLE":
+            self.reset_to_idle_standby()
 
     def run_forever(self):
         self.start_system()
 
         while True:
             try:
+                self.process_dashboard_commands()
                 self.run_current_state()
                 time.sleep(0.1)
 

@@ -1,0 +1,15 @@
+{% extends "layouts/base.html" %}
+{% block title %}Authentication Attempts{% endblock %}
+{% block content %}
+{% set title = "Authentication Attempts" %}{% include "layouts/partials/_page_header.html" %}
+<div class="card mb-3"><div class="card-body"><form class="row g-2" method="get">
+    <div class="col-md-4"><input type="text" name="q" class="form-control" placeholder="Search..." value="{{ filters.q }}"></div>
+    <div class="col-md-3"><select name="result" class="form-select"><option value="">All Results</option><option value="ACCESS_GRANTED" {% if filters.result=='ACCESS_GRANTED' %}selected{% endif %}>GRANTED</option><option value="ACCESS_DENIED" {% if filters.result=='ACCESS_DENIED' %}selected{% endif %}>DENIED</option></select></div>
+    <div class="col-md-2"><button class="btn btn-primary w-100">Filter</button></div>
+</form></div></div>
+<div class="card"><div class="table-responsive"><table class="table table-vcenter card-table table-striped"><thead><tr><th>ID</th><th>Employee</th><th>RFID</th><th>Fingerprint</th><th>Face</th><th>Behavior</th><th>Result</th><th>Time</th><th></th></tr></thead><tbody>
+{% for row in attempts %}<tr class="{% if row.FinalResult=='ACCESS_DENIED' %}row-danger-soft{% elif row.FinalResult=='ACCESS_GRANTED' %}row-success-soft{% endif %}"><td>{{ row.AuthenticationAttemptID }}</td><td>{{ row.FullName or 'Unknown' }}</td><td><span class="auth-factor-badge">{{ row.RFIDStatus|humanize }}</span></td><td><span class="auth-factor-badge">{{ row.FingerprintStatus|humanize }}</span></td><td><span class="auth-factor-badge">{{ row.FaceRecognitionStatus|humanize }}</span></td><td><span class="auth-factor-badge">{{ row.BehaviorStatus|humanize }}</span></td><td><span class="badge {{ row.FinalResult|badge_class }}">{{ row.FinalResult|humanize }}</span></td><td>{{ row.CreationDate }}</td><td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('auth_attempts.attempt_detail', attempt_id=row.AuthenticationAttemptID) }}">View</a></td></tr>
+{% else %}<tr><td colspan="9" class="text-secondary text-center">No attempts found.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% include "components/pagination.html" %}
+{% endblock %}

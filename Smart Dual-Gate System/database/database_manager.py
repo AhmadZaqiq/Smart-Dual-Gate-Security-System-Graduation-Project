@@ -91,3 +91,12 @@ def execute_insert(query, params=()):
     except Exception as error:
         print(f"[DATABASE] Insert error: {error}", flush=True)
         return None
+
+
+# Backward-compatible aliases used by the web dashboard.
+def fetch_one(query, params=()):
+    return execute_query_one(query, params)
+
+
+def fetch_all(query, params=()):
+    return execute_query(query, params)

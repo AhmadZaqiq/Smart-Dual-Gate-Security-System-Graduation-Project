@@ -1,0 +1,39 @@
+<div class="card mantrap-visual-card mb-4" id="mantrap-visual-root">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h3 class="card-title mb-0"><i class="ti ti-building-fortress me-2"></i>Mantrap Visual Model</h3>
+            <div class="text-secondary small">Live chamber, door, and occupancy representation</div>
+        </div>
+        <span class="badge" id="mantrap-visual-mode-badge">NORMAL</span>
+    </div>
+    <div class="card-body">
+        <div class="mantrap-stage" id="mantrap-stage" data-mode="normal">
+            <div class="mantrap-zone outer-zone">
+                <div class="zone-label">Outer Door</div>
+                <div class="door-panel outer-door" id="visual-outer-door" data-state="unknown">
+                    <div class="door-leaf door-leaf-left"></div>
+                    <div class="door-leaf door-leaf-right"></div>
+                </div>
+            </div>
+            <div class="mantrap-zone chamber-zone">
+                <div class="zone-label">Secure Chamber</div>
+                <div class="chamber-body">
+                    <div class="workflow-label" id="visual-workflow-label">Workflow: --</div>
+                    <div class="person-dots" id="visual-person-dots"></div>
+                </div>
+            </div>
+            <div class="mantrap-zone inner-zone">
+                <div class="zone-label">Inner Door</div>
+                <div class="door-panel inner-door" id="visual-inner-door" data-state="unknown">
+                    <div class="door-leaf door-leaf-left"></div>
+                    <div class="door-leaf door-leaf-right"></div>
+                </div>
+            </div>
+        </div>
+        <div class="mantrap-legend mt-3">
+            <span><i class="legend-dot legend-open"></i> Open</span>
+            <span><i class="legend-dot legend-closed"></i> Closed</span>
+            <span><i class="legend-dot legend-unknown"></i> Unknown</span>
+        </div>
+    </div>
+</div>

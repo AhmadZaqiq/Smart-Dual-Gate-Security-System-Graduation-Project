@@ -1,0 +1,19 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+{% set subtitle = title %}{% set title = title %}{% include "layouts/partials/_page_header.html" %}
+<div class="card"><div class="card-body"><form method="post">{{ form.hidden_tag() }}
+<div class="row">
+<div class="col-md-6 mb-3"><label class="form-label">Employee Number</label>{{ form.employee_number(class_="form-control") }}</div>
+<div class="col-md-6 mb-3"><label class="form-label">First Name</label>{{ form.first_name(class_="form-control") }}</div>
+<div class="col-md-4 mb-3"><label class="form-label">Second Name</label>{{ form.second_name(class_="form-control") }}</div>
+<div class="col-md-4 mb-3"><label class="form-label">Third Name</label>{{ form.third_name(class_="form-control") }}</div>
+<div class="col-md-4 mb-3"><label class="form-label">Last Name</label>{{ form.last_name(class_="form-control") }}</div>
+<div class="col-md-4 mb-3"><label class="form-label">RFID UID</label>{{ form.rfid_uid(class_="form-control") }}</div>
+<div class="col-md-4 mb-3"><label class="form-label">Fingerprint Position</label>{{ form.fingerprint_position(class_="form-control") }}</div>
+<div class="col-md-4 mb-3"><label class="form-label">Face Image Path</label>{{ form.face_image_path(class_="form-control") }}</div>
+</div>
+<button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+<a href="{{ url_for('employees.list_employees') }}" class="btn btn-secondary">Cancel</a>
+</form></div></div>
+{% endblock %}

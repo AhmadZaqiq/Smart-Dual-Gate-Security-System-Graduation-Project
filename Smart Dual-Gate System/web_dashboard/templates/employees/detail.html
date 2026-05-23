@@ -1,0 +1,14 @@
+{% extends "layouts/base.html" %}
+{% block title %}Employee #{{ detail.employee.EmployeeID }}{% endblock %}
+{% block content %}
+{% set title = detail.employee.FullName %}{% set action_url = url_for('employees.edit_employee', employee_id=detail.employee.EmployeeID) %}{% set action_label = "Edit" %}{% include "layouts/partials/_page_header.html" %}
+<div class="row"><div class="col-lg-6"><div class="card mb-3"><div class="card-header">Profile</div><div class="card-body"><dl class="row">
+<dt class="col-4">Number</dt><dd class="col-8">{{ detail.employee.EmployeeNumber }}</dd>
+<dt class="col-4">Status</dt><dd class="col-8">{% if detail.employee.IsActive %}Active{% else %}Inactive{% endif %}</dd>
+</dl></div></div></div>
+<div class="col-lg-6"><div class="card mb-3"><div class="card-header">Authentication</div><div class="card-body"><dl class="row">
+<dt class="col-4">RFID UID</dt><dd class="col-8">{{ detail.authentication.RFIDUID if detail.authentication else '-' }}</dd>
+<dt class="col-4">Fingerprint Pos</dt><dd class="col-8">{{ detail.authentication.FingerprintPosition if detail.authentication else '-' }}</dd>
+<dt class="col-4">Face Image</dt><dd class="col-8 text-break">{{ detail.authentication.FaceImagePath if detail.authentication else '-' }}</dd>
+</dl></div></div></div></div>
+{% endblock %}

@@ -115,3 +115,63 @@ def get_recent_activity(limit=20):
     """
 
     return execute_query(query, (limit,))
+
+
+def get_today_failed_attempts():
+    query = """
+        SELECT COUNT(*) AS TodayFailedAttempts
+        FROM AuthenticationAttempt
+        WHERE FinalResult = 'ACCESS_DENIED'
+          AND date(CreationDate) = date('now');
+    """
+
+    result = execute_query_one(query)
+
+    if result:
+        return result["TodayFailedAttempts"]
+
+    return 0
+
+
+def get_access_chart_data(days=7):
+    query = """
+        SELECT
+            date(EntryTime) AS DayLabel,
+            COUNT(*) AS SessionCount
+        FROM AccessSession
+        WHERE EntryTime IS NOT NULL
+          AND date(EntryTime) >= date('now', ?)
+        GROUP BY date(EntryTime)
+        ORDER BY DayLabel ASC;
+    """
+
+    return execute_query(query, (f"-{int(days)} days",))
+
+
+def get_security_chart_data(days=7):
+    query = """
+        SELECT
+            Severity,
+            COUNT(*) AS EventCount
+        FROM SecurityEvent
+        WHERE date(CreationDate) >= date('now', ?)
+        GROUP BY Severity
+        ORDER BY EventCount DESC;
+    """
+
+    return execute_query(query, (f"-{int(days)} days",))
+
+
+def get_security_events_by_type_chart(days=7):
+    query = """
+        SELECT
+            EventType,
+            COUNT(*) AS EventCount
+        FROM SecurityEvent
+        WHERE date(CreationDate) >= date('now', ?)
+        GROUP BY EventType
+        ORDER BY EventCount DESC
+        LIMIT 10;
+    """
+
+    return execute_query(query, (f"-{int(days)} days",))

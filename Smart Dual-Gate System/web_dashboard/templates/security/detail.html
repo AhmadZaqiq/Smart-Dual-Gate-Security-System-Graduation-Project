@@ -1,0 +1,19 @@
+{% extends "layouts/base.html" %}
+{% block title %}Security Event #{{ event.SecurityEventID }}{% endblock %}
+{% block content %}
+{% set title = "Security Event #" ~ event.SecurityEventID %}{% include "layouts/partials/_page_header.html" %}
+<div class="card mb-3"><div class="card-body"><dl class="row">
+<dt class="col-3">Type</dt><dd class="col-9">{{ event.EventType }}</dd>
+<dt class="col-3">Severity</dt><dd class="col-9"><span class="badge {{ event.Severity|badge_class }}">{{ event.Severity }}</span></dd>
+<dt class="col-3">Persons Detected</dt><dd class="col-9">{{ event.DetectedPersonsCount or '-' }}</dd>
+<dt class="col-3">Description</dt><dd class="col-9">{{ event.Description or '-' }}</dd>
+<dt class="col-3">Resolved</dt><dd class="col-9">{% if event.IsResolved %}Yes by {{ event.ResolvedByUsername }}{% else %}No{% endif %}</dd>
+</dl></div></div>
+{% if not event.IsResolved %}
+<div class="card"><div class="card-header">Resolve Event</div><div class="card-body">
+<form method="post" action="{{ url_for('security.resolve_event', event_id=event.SecurityEventID) }}">{{ form.hidden_tag() }}
+<div class="mb-3">{{ form.notes(class_="form-control", placeholder="Resolution notes") }}</div>
+<button type="submit" class="btn btn-success">{{ form.submit.label.text }}</button>
+</form></div></div>
+{% endif %}
+{% endblock %}

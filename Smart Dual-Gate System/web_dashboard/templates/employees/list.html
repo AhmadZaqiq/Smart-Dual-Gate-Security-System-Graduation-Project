@@ -1,0 +1,33 @@
+{% extends "layouts/base.html" %}
+{% block title %}Employees{% endblock %}
+{% block content %}
+{% set title = "Employees" %}{% set action_url = url_for('employees.new_employee') %}{% set action_label = "Add Employee" %}{% include "layouts/partials/_page_header.html" %}
+<div class="card mb-3 hover-lift"><div class="card-body"><form method="get" class="row g-2"><div class="col-md-4"><input type="text" name="q" class="form-control" placeholder="Search employees..." value="{{ search_query }}"></div><div class="col-md-2"><button class="btn btn-primary btn-action">Search</button></div></form></div></div>
+<div class="card hover-lift"><div class="table-responsive"><table class="table table-vcenter card-table table-striped table-hover"><thead><tr><th>ID</th><th>Number</th><th>Name</th><th>RFID</th><th>Fingerprint</th><th>Status</th><th></th></tr></thead><tbody>
+{% for row in employees %}
+<tr>
+    <td>{{ row.EmployeeID }}</td>
+    <td>{{ row.EmployeeNumber }}</td>
+    <td>{{ row.FullName }}</td>
+    <td>{{ row.RFIDUID or '—' }}</td>
+    <td>{{ row.FingerprintPosition or '—' }}</td>
+    <td>
+        <label class="form-check form-switch employee-toggle mb-0">
+            <input class="form-check-input employee-active-toggle" type="checkbox" data-employee-id="{{ row.EmployeeID }}" {% if row.IsActive %}checked{% endif %}>
+            <span class="form-check-label">{{ 'Active' if row.IsActive else 'Inactive' }}</span>
+        </label>
+    </td>
+    <td class="text-nowrap">
+        <a href="{{ url_for('employees.employee_detail', employee_id=row.EmployeeID) }}" class="btn btn-sm btn-outline-primary btn-action">View</a>
+        <a href="{{ url_for('employees.edit_employee', employee_id=row.EmployeeID) }}" class="btn btn-sm btn-outline-secondary btn-action">Edit</a>
+    </td>
+</tr>
+{% else %}
+<tr><td colspan="7" class="text-secondary text-center py-4">No employees found.</td></tr>
+{% endfor %}
+</tbody></table></div></div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/employee_toggle.js') }}"></script>
+<script>document.addEventListener("DOMContentLoaded", function () { window.MantrapEmployeeToggle && window.MantrapEmployeeToggle.init(); });</script>
+{% endblock %}

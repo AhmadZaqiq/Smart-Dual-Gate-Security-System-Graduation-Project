@@ -1,0 +1,41 @@
+{% extends "layouts/base.html" %}
+{% block title %}Admin Management{% endblock %}
+{% block content %}
+{% set title = "Admin Management" %}{% set action_url = url_for('admins.new_admin') %}{% set action_label = "Add Admin" %}{% include "layouts/partials/_page_header.html" %}
+<div class="card hover-lift">
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Last Login</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for admin in admins %}
+                <tr>
+                    <td>{{ admin.AdminUserID }}</td>
+                    <td>{{ admin.UserName }}</td>
+                    <td>{{ admin.FullName }}</td>
+                    <td>{{ admin.Email or '—' }}</td>
+                    <td><span class="badge bg-azure-lt">{{ admin.Role or 'Operator' }}</span></td>
+                    <td>{% if admin.IsActive %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Disabled</span>{% endif %}</td>
+                    <td>{{ admin.LastLoginDate or 'Never' }}</td>
+                    <td class="text-nowrap">
+                        <a href="{{ url_for('admins.edit_admin', admin_id=admin.AdminUserID) }}" class="btn btn-sm btn-outline-primary btn-action">Edit</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="text-secondary text-center py-4">No admin accounts found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

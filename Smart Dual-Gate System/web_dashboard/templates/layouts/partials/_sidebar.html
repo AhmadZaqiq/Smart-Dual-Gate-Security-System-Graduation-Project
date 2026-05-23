@@ -1,0 +1,26 @@
+<aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark">
+    <div class="container-fluid">
+        <h1 class="navbar-brand navbar-brand-autodark">
+            <a href="{{ url_for('dashboard.index') }}" class="text-decoration-none text-white">
+                <i class="ti ti-shield-lock me-2"></i>Mantrap Control
+            </a>
+        </h1>
+        <div class="collapse navbar-collapse" id="sidebar-menu">
+            <ul class="navbar-nav pt-lg-3">
+                <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('dashboard.') %}active{% endif %}" href="{{ url_for('dashboard.index') }}"><span class="nav-link-icon"><i class="ti ti-layout-dashboard"></i></span><span class="nav-link-title">Overview</span></a></li>
+                <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('live.') %}active{% endif %}" href="{{ url_for('live.index') }}"><span class="nav-link-icon"><i class="ti ti-video"></i></span><span class="nav-link-title">Live Monitor</span></a></li>
+                <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('access.') %}active{% endif %}" href="{{ url_for('access.list_sessions') }}"><span class="nav-link-icon"><i class="ti ti-door-enter"></i></span><span class="nav-link-title">Access Sessions</span></a></li>
+                <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('auth_attempts.') %}active{% endif %}" href="{{ url_for('auth_attempts.list_attempts') }}"><span class="nav-link-icon"><i class="ti ti-fingerprint"></i></span><span class="nav-link-title">Auth Attempts</span></a></li>
+                <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('security.') %}active{% endif %}" href="{{ url_for('security.list_events') }}"><span class="nav-link-icon"><i class="ti ti-alert-triangle"></i></span><span class="nav-link-title">Security Events</span></a></li>
+                <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('employees.') %}active{% endif %}" href="{{ url_for('employees.list_employees') }}"><span class="nav-link-icon"><i class="ti ti-users"></i></span><span class="nav-link-title">Employees</span></a></li>
+                {% if is_super_admin %}
+                <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('admins.') %}active{% endif %}" href="{{ url_for('admins.list_admins') }}"><span class="nav-link-icon"><i class="ti ti-user-shield"></i></span><span class="nav-link-title">Admin Management</span></a></li>
+                {% endif %}
+                <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('settings.') %}active{% endif %}" href="{{ url_for('settings.index') }}"><span class="nav-link-icon"><i class="ti ti-settings"></i></span><span class="nav-link-title">Settings</span></a></li>
+                <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('logs.') %}active{% endif %}" href="{{ url_for('logs.index') }}"><span class="nav-link-icon"><i class="ti ti-file-text"></i></span><span class="nav-link-title">System Logs</span></a></li>
+                <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('audit.') %}active{% endif %}" href="{{ url_for('audit.index') }}"><span class="nav-link-icon"><i class="ti ti-history"></i></span><span class="nav-link-title">Audit Trail</span></a></li>
+                <li class="nav-item mt-4"><a class="nav-link text-red" href="{{ url_for('auth.logout') }}"><span class="nav-link-icon"><i class="ti ti-logout"></i></span><span class="nav-link-title">Logout</span></a></li>
+            </ul>
+        </div>
+    </div>
+</aside>

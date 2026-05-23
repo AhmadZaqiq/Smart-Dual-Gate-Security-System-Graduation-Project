@@ -1,0 +1,15 @@
+{% extends "layouts/base.html" %}
+{% block title %}Auth Attempt #{{ attempt.AuthenticationAttemptID }}{% endblock %}
+{% block content %}
+{% set title = "Authentication Attempt #" ~ attempt.AuthenticationAttemptID %}{% include "layouts/partials/_page_header.html" %}
+<div class="card"><div class="card-body"><dl class="row">
+<dt class="col-3">Employee</dt><dd class="col-9">{{ attempt.FullName }} ({{ attempt.EmployeeNumber }})</dd>
+<dt class="col-3">RFID</dt><dd class="col-9">{{ attempt.RFIDStatus }}</dd>
+<dt class="col-3">Fingerprint</dt><dd class="col-9">{{ attempt.FingerprintStatus }}</dd>
+<dt class="col-3">Face</dt><dd class="col-9">{{ attempt.FaceRecognitionStatus }}</dd>
+<dt class="col-3">Behavior</dt><dd class="col-9">{{ attempt.BehaviorStatus }}</dd>
+<dt class="col-3">Final Result</dt><dd class="col-9"><span class="badge {{ attempt.FinalResult|badge_class }}">{{ attempt.FinalResult }}</span></dd>
+<dt class="col-3">Failure Reason</dt><dd class="col-9">{{ attempt.FailureReason or '-' }}</dd>
+<dt class="col-3">Timestamp</dt><dd class="col-9">{{ attempt.CreationDate }}</dd>
+</dl></div></div>
+{% endblock %}

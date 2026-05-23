@@ -1,0 +1,115 @@
+{% extends "layouts/base.html" %}
+{% block title %}Control Center{% endblock %}
+{% block content %}
+<div class="page-header d-print-none mb-4 hero-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <div class="page-pretitle">Mantrap Security Control Center</div>
+            <h2 class="page-title">Security Overview</h2>
+            <div class="text-secondary">Real-time monitoring, workflow path, analytics, and safe system control</div>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('live.index') }}" class="btn btn-primary btn-action"><i class="ti ti-video me-1"></i> Open Live Monitor</a>
+        </div>
+    </div>
+</div>
+
+{% include "components/system_controls.html" %}
+{% include "components/workflow_visual.html" %}
+{% include "components/mantrap_visual.html" %}
+
+<section class="mb-4">
+    <h3 class="section-title"><i class="ti ti-activity me-2"></i>Live Status</h3>
+    <div class="row row-deck row-cards g-3">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card status-card hover-lift">
+                <div class="card-body">
+                    <div class="status-card-label"><i class="ti ti-route"></i> Workflow State</div>
+                    <div class="status-card-value"><span class="status-pill lg" id="card-workflow-state" data-state="UNKNOWN">--</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card status-card hover-lift">
+                <div class="card-body">
+                    <div class="status-card-label"><i class="ti ti-cpu"></i> Process</div>
+                    <div class="status-card-value"><span class="status-pill lg" id="card-process-state" data-state="UNKNOWN">--</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card status-card hover-lift">
+                <div class="card-body">
+                    <div class="status-card-label"><i class="ti ti-users"></i> Detected Persons</div>
+                    <div class="status-card-value display-value" id="card-person-count">0</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card status-card hover-lift">
+                <div class="card-body">
+                    <div class="status-card-label"><i class="ti ti-door"></i> Active Sessions</div>
+                    <div class="status-card-value display-value">{{ summary.active_sessions }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card status-card hover-lift"><div class="card-body">
+                <div class="status-card-label"><i class="ti ti-door-enter"></i> Outer Door</div>
+                <span class="status-pill lg" id="card-outer-door" data-state="UNKNOWN">UNKNOWN</span>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card status-card hover-lift"><div class="card-body">
+                <div class="status-card-label"><i class="ti ti-door-exit"></i> Inner Door</div>
+                <span class="status-pill lg" id="card-inner-door" data-state="UNKNOWN">UNKNOWN</span>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card status-card hover-lift"><div class="card-body">
+                <div class="status-card-label"><i class="ti ti-video"></i> Stream Health</div>
+                <span class="status-pill lg" id="card-stream-health" data-state="INACTIVE">INACTIVE</span>
+            </div></div>
+        </div>
+    </div>
+</section>
+
+<section class="mb-4">
+    <h3 class="section-title"><i class="ti ti-chart-bar me-2"></i>Security Analytics</h3>
+    <div class="row row-deck row-cards g-3 mb-3">
+        <div class="col-sm-6 col-lg-3"><div class="card metric-card hover-lift"><div class="card-body"><div class="metric-label">Today Access</div><div class="metric-value">{{ summary.today_access_count }}</div></div></div></div>
+        <div class="col-sm-6 col-lg-3"><div class="card metric-card hover-lift"><div class="card-body"><div class="metric-label">Failed Attempts</div><div class="metric-value text-danger">{{ summary.today_failed_attempts }}</div></div></div></div>
+        <div class="col-sm-6 col-lg-3"><div class="card metric-card hover-lift"><div class="card-body"><div class="metric-label">Security Events</div><div class="metric-value text-warning">{{ summary.today_security_events }}</div></div></div></div>
+        <div class="col-sm-6 col-lg-3"><div class="card metric-card hover-lift"><div class="card-body"><div class="metric-label">Employees</div><div class="metric-value">{{ summary.total_employees }}</div></div></div></div>
+    </div>
+    <div class="row g-3">
+        <div class="col-lg-7"><div class="card chart-card hover-lift"><div class="card-header"><h3 class="card-title">Access Sessions (7 days)</h3></div><div class="card-body chart-wrap"><canvas id="accessChart"></canvas></div></div></div>
+        <div class="col-lg-5"><div class="card chart-card hover-lift"><div class="card-header"><h3 class="card-title">Security Severity</h3></div><div class="card-body chart-wrap chart-wrap-donut"><canvas id="securityChart"></canvas></div></div></div>
+    </div>
+</section>
+
+<section>
+    <h3 class="section-title"><i class="ti ti-clock me-2"></i>Recent Activity</h3>
+    <div class="row g-3">
+        <div class="col-lg-4"><div class="card hover-lift"><div class="card-header"><h3 class="card-title">Activity Feed</h3></div><div class="list-group list-group-flush activity-feed">
+            {% for item in recent_activity %}
+            <div class="list-group-item"><div class="fw-bold">{{ item.ActivityType|humanize }}</div><div class="text-secondary small">{{ item.Title }} &mdash; {{ item.ActivityDate }}</div></div>
+            {% else %}<div class="list-group-item empty-state-inline">No recent activity.</div>{% endfor %}
+        </div></div></div>
+        <div class="col-lg-4"><div class="card hover-lift"><div class="card-header"><h3 class="card-title">Recent Access</h3></div><div class="table-responsive"><table class="table table-vcenter card-table table-hover"><thead><tr><th>Employee</th><th>Status</th></tr></thead><tbody>
+            {% for row in recent_access %}<tr><td>{{ row.FullName or 'Unknown' }}</td><td><span class="badge {{ row.FinalStatus|badge_class }}">{{ row.FinalStatus|humanize }}</span></td></tr>
+            {% else %}<tr><td colspan="2" class="empty-state-inline">No sessions.</td></tr>{% endfor %}
+        </tbody></table></div></div></div>
+        <div class="col-lg-4"><div class="card hover-lift"><div class="card-header"><h3 class="card-title">Recent Alerts</h3></div><div class="table-responsive"><table class="table table-vcenter card-table table-hover"><thead><tr><th>Type</th><th>Severity</th></tr></thead><tbody>
+            {% for row in recent_security %}<tr class="{% if row.Severity=='HIGH' %}row-danger-soft{% endif %}"><td>{{ row.EventType|humanize }}</td><td><span class="badge {{ row.Severity|badge_class }}">{{ row.Severity|humanize }}</span></td></tr>
+            {% else %}<tr><td colspan="2" class="empty-state-inline">No events.</td></tr>{% endfor %}
+        </tbody></table></div></div></div>
+    </div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/charts-overview.js') }}"></script>
+<script src="{{ url_for('static', filename='js/workflow_visual.js') }}"></script>
+<script>window.MantrapPolling && window.MantrapPolling.startOverviewStatus();</script>
+{% endblock %}

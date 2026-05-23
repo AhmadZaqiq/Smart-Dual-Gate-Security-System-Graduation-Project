@@ -1,0 +1,80 @@
+{% extends "layouts/base.html" %}
+{% block title %}System Settings{% endblock %}
+{% block content %}
+<div class="page-header hero-header mb-4">
+    <div class="page-pretitle">Configuration</div>
+    <h2 class="page-title">System Settings</h2>
+    <div class="text-secondary">Authentication modules, attempt limits, YOLO, and stream configuration</div>
+</div>
+
+<form method="post" id="settings-form">{{ form.hidden_tag() }}
+
+<div class="card mb-4 hover-lift">
+    <div class="card-header"><h3 class="card-title">Authentication Modules</h3></div>
+    <div class="card-body row g-3">
+        {% for item in settings_data.editable if item.key.startswith('REQUIRE_') %}
+        <div class="col-md-6">
+            <label class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="{{ item.key }}" value="1" {% if item.value == '1' %}checked{% endif %}>
+                <span class="form-check-label">{{ item.key|humanize }}</span>
+            </label>
+            <div class="form-hint">{{ item.description }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card mb-4 hover-lift">
+    <div class="card-header"><h3 class="card-title">Attempt Limits</h3></div>
+    <div class="card-body row g-3">
+        {% for item in settings_data.editable if item.key.startswith('MAX_') %}
+        <div class="col-md-4">
+            <label class="form-label">{{ item.key|humanize }}</label>
+            <input type="number" min="1" max="20" class="form-control" name="{{ item.key }}" value="{{ item.value }}">
+            <div class="form-hint">{{ item.description }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card mb-4 hover-lift">
+    <div class="card-header"><h3 class="card-title">YOLO Settings</h3></div>
+    <div class="card-body row g-3">
+        {% for item in settings_data.editable if item.key.startswith('YOLO_') and item.key != 'DASHBOARD_STREAM_URL' %}
+        <div class="col-md-4">
+            <label class="form-label">{{ item.key|humanize }}</label>
+            <input type="text" class="form-control" name="{{ item.key }}" value="{{ item.value }}">
+            <div class="form-hint">{{ item.description or 'Applied on next YOLO monitor start.' }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card mb-4 hover-lift">
+    <div class="card-header"><h3 class="card-title">Stream Settings</h3></div>
+    <div class="card-body">
+        <label class="form-label">Dashboard Stream URL (read-only display)</label>
+        <input type="text" class="form-control" value="{{ settings_data.stream_url }}" readonly>
+        {% for item in settings_data.editable if item.key == 'DASHBOARD_STREAM_URL' %}
+        <label class="form-label mt-3">{{ item.key|humanize }}</label>
+        <input type="text" class="form-control" name="{{ item.key }}" value="{{ item.value }}">
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card mb-4 hover-lift">
+    <div class="card-header"><h3 class="card-title">Workflow Timing (Read Only)</h3></div>
+    <div class="card-body row g-3">
+        {% for item in settings_data.readonly %}
+        <div class="col-md-3">
+            <label class="form-label">{{ item.key|humanize }}</label>
+            <input type="text" class="form-control" value="{{ item.value }}" readonly>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="card-footer text-secondary small">Workflow timing is defined in config/settings.py and requires mantrap process restart.</div>
+</div>
+
+<button type="submit" class="btn btn-primary btn-lg btn-action"><i class="ti ti-device-floppy me-1"></i> {{ form.submit.label.text }}</button>
+</form>
+{% endblock %}

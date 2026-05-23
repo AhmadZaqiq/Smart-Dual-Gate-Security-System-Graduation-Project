@@ -1,4 +1,9 @@
-from database_manager import execute_query
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from database.database_manager import execute_query
 
 
 # =========================
@@ -77,6 +82,8 @@ def create_admin_user_table():
             Email TEXT UNIQUE,
 
             PasswordHash TEXT NOT NULL,
+
+            Role TEXT NOT NULL DEFAULT 'Operator',
 
             IsActive INTEGER NOT NULL DEFAULT 1,
             IsDeleted INTEGER NOT NULL DEFAULT 0,
@@ -264,9 +271,17 @@ def create_audit_table():
 
             AdminUserID INTEGER,
 
-            Action TEXT NOT NULL,
+            ActionType TEXT NOT NULL,
 
-            Details TEXT,
+            TableName TEXT,
+
+            RecordID INTEGER,
+
+            OldValue TEXT,
+
+            NewValue TEXT,
+
+            Description TEXT,
 
             CreationDate TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 

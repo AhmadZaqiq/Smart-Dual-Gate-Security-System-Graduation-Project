@@ -1,0 +1,151 @@
+.mantrap-visual-card .mantrap-stage {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1fr;
+    gap: 1rem;
+    min-height: 220px;
+    padding: 1rem;
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.95));
+    transition: box-shadow 0.35s ease, border-color 0.35s ease;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+#mantrap-stage[data-mode="normal"] {
+    box-shadow: 0 0 30px rgba(34, 211, 238, 0.15);
+}
+
+#mantrap-stage[data-mode="warning"] {
+    box-shadow: 0 0 34px rgba(245, 158, 11, 0.28);
+}
+
+#mantrap-stage[data-mode="lockdown"] {
+    box-shadow: 0 0 38px rgba(239, 68, 68, 0.35);
+}
+
+.mantrap-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.zone-label {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.door-panel {
+    position: relative;
+    width: 100%;
+    max-width: 120px;
+    height: 120px;
+    perspective: 700px;
+}
+
+.door-leaf {
+    position: absolute;
+    top: 10%;
+    width: 46%;
+    height: 80%;
+    background: linear-gradient(180deg, #334155, #1e293b);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 6px;
+    transition: transform 0.55s ease;
+}
+
+.door-leaf-left {
+    left: 4%;
+    transform-origin: left center;
+}
+
+.door-leaf-right {
+    right: 4%;
+    transform-origin: right center;
+}
+
+.door-panel[data-state="OPEN"] .door-leaf-left {
+    transform: rotateY(-62deg);
+}
+
+.door-panel[data-state="OPEN"] .door-leaf-right {
+    transform: rotateY(62deg);
+}
+
+.door-panel[data-state="CLOSED"] .door-leaf-left,
+.door-panel[data-state="CLOSED"] .door-leaf-right {
+    transform: rotateY(0deg);
+}
+
+.door-panel[data-state="UNKNOWN"] .door-leaf {
+    background: linear-gradient(180deg, #475569, #334155);
+    opacity: 0.75;
+}
+
+.chamber-body {
+    width: 100%;
+    min-height: 150px;
+    border-radius: 14px;
+    border: 1px dashed rgba(34, 211, 238, 0.35);
+    background: radial-gradient(circle at center, rgba(34, 211, 238, 0.08), transparent 70%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1rem;
+}
+
+.workflow-label {
+    font-size: 0.85rem;
+    color: #cbd5e1;
+}
+
+.person-dots {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.person-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #22d3ee;
+    box-shadow: 0 0 12px rgba(34, 211, 238, 0.8);
+    animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.75; }
+}
+
+.mantrap-legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 0.35rem;
+}
+
+.legend-open { background: #22d3ee; }
+.legend-closed { background: #10b981; }
+.legend-unknown { background: #64748b; }
+
+@media (max-width: 992px) {
+    .mantrap-visual-card .mantrap-stage {
+        grid-template-columns: 1fr;
+    }
+}

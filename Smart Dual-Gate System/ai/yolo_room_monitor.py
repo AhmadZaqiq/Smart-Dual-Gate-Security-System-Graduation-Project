@@ -32,6 +32,10 @@ recent_counts = deque(maxlen=15)
 lock = threading.Lock()
 
 
+def is_monitor_running():
+    return monitor_running
+
+
 def load_model():
     global model
 
@@ -128,6 +132,16 @@ def stop_room_monitor():
     release_camera()
     reset_latest_detection()
 
+    try:
+        from core import system_status
+        system_status.update_status_snapshot(
+            yolo_running=False,
+            yolo_person_count=0,
+            stream_available=False,
+        )
+    except Exception:
+        pass
+
     print("[AI] YOLO room monitor stopped", flush=True)
 
 
@@ -194,6 +208,16 @@ def room_monitor_loop():
             latest_count = count
             recent_counts.append(count)
             latest_frame = annotated_frame.copy()
+
+        try:
+            from core import system_status
+            system_status.update_status_snapshot(
+                yolo_running=True,
+                yolo_person_count=get_detected_count(),
+                stream_available=True,
+            )
+        except Exception:
+            pass
 
         time.sleep(0.05)
 

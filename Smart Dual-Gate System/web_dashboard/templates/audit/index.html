@@ -1,0 +1,16 @@
+{% extends "layouts/base.html" %}
+{% block title %}Audit Trail{% endblock %}
+{% block content %}
+{% set title = "Audit Trail" %}{% include "layouts/partials/_page_header.html" %}
+<div class="card mb-3"><div class="card-body"><form method="get" class="row g-2">
+<div class="col-md-3"><input type="text" name="q" class="form-control" placeholder="Search..." value="{{ filters.q }}"></div>
+<div class="col-md-2"><input type="text" name="table" class="form-control" placeholder="Table" value="{{ filters.table }}"></div>
+<div class="col-md-2"><input type="text" name="action" class="form-control" placeholder="Action" value="{{ filters.action }}"></div>
+<div class="col-md-2"><button class="btn btn-primary">Filter</button></div>
+</form></div></div>
+<div class="card"><div class="table-responsive"><table class="table table-vcenter card-table table-striped"><thead><tr><th>ID</th><th>Admin</th><th>Action</th><th>Table</th><th>Record</th><th>Description</th><th>Date</th></tr></thead><tbody>
+{% for row in audits %}<tr><td>{{ row.AuditID }}</td><td>{{ row.UserName or row.AdminName or '-' }}</td><td>{{ row.ActionType }}</td><td>{{ row.TableName or '-' }}</td><td>{{ row.RecordID or '-' }}</td><td class="text-break">{{ row.Description or row.NewValue or '-' }}</td><td>{{ row.CreationDate }}</td></tr>
+{% else %}<tr><td colspan="7" class="text-secondary text-center">No audit records.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% include "components/pagination.html" %}
+{% endblock %}

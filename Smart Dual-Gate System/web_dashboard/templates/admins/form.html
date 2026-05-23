@@ -1,0 +1,60 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-header hero-header mb-4">
+    <div class="page-pretitle">Administration</div>
+    <h2 class="page-title">{{ title }}</h2>
+</div>
+
+<div class="card hover-lift">
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" name="username" value="{{ admin.UserName if admin else '' }}" {% if admin %}readonly{% endif %} required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" name="email" value="{{ admin.Email if admin else '' }}" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">First Name</label>
+                <input type="text" class="form-control" name="first_name" value="{{ admin.FirstName if admin else 'Admin' }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Last Name</label>
+                <input type="text" class="form-control" name="last_name" value="{{ admin.LastName if admin else 'User' }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Role</label>
+                <select class="form-select" name="role">
+                    <option value="Super Admin" {% if admin and admin.Role == 'Super Admin' %}selected{% endif %}>Super Admin</option>
+                    <option value="Operator" {% if not admin or admin.Role == 'Operator' %}selected{% endif %}>Operator</option>
+                </select>
+            </div>
+            {% if admin %}
+            <div class="col-md-6">
+                <label class="form-label">Account Status</label>
+                <select class="form-select" name="is_active">
+                    <option value="1" {% if admin.IsActive %}selected{% endif %}>Active</option>
+                    <option value="0" {% if not admin.IsActive %}selected{% endif %}>Disabled</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Reset Password (optional)</label>
+                <input type="password" class="form-control" name="new_password" placeholder="Leave blank to keep current password">
+            </div>
+            {% else %}
+            <div class="col-md-6">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-control" name="password" required>
+            </div>
+            {% endif %}
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-action"><i class="ti ti-device-floppy"></i> Save</button>
+                <a href="{{ url_for('admins.list_admins') }}" class="btn btn-outline-secondary btn-action">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

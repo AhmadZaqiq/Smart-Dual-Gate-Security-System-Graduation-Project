@@ -155,3 +155,115 @@ def get_active_access_session_by_employee(employee_id):
     """
 
     return execute_query_one(query, (employee_id,))
+
+
+def get_access_sessions_paginated(
+    page=1,
+    limit=25,
+    final_status=None,
+    search_text=None,
+    date_from=None,
+    date_to=None
+):
+    filters = []
+    params = []
+
+    if final_status:
+        filters.append("S.FinalStatus = ?")
+        params.append(final_status)
+
+    if search_text:
+        filters.append(
+            "(E.EmployeeNumber LIKE ? OR P.FirstName LIKE ? OR P.LastName LIKE ?)"
+        )
+        value = f"%{search_text}%"
+        params.extend([value, value, value])
+
+    if date_from:
+        filters.append("date(S.EntryTime) >= date(?)")
+        params.append(date_from)
+
+    if date_to:
+        filters.append("date(S.EntryTime) <= date(?)")
+        params.append(date_to)
+
+    where_clause = ""
+
+    if filters:
+        where_clause = "WHERE " + " AND ".join(filters)
+
+    offset = (page - 1) * limit
+
+    query = f"""
+        SELECT
+            S.AccessSessionID,
+            S.EmployeeID,
+            E.EmployeeNumber,
+            P.FirstName || ' ' || P.LastName AS FullName,
+            S.EntryTime,
+            S.ExitTime,
+            S.SessionDurationSeconds,
+            S.EntryMethod,
+            S.ExitMethod,
+            S.FinalStatus,
+            S.Notes
+        FROM AccessSession S
+        LEFT JOIN Employee E ON E.EmployeeID = S.EmployeeID
+        LEFT JOIN Person P ON P.PersonID = E.PersonID
+        {where_clause}
+        ORDER BY S.AccessSessionID DESC
+        LIMIT ? OFFSET ?;
+    """
+
+    params.extend([limit, offset])
+
+    return execute_query(query, tuple(params))
+
+
+def count_access_sessions(
+    final_status=None,
+    search_text=None,
+    date_from=None,
+    date_to=None
+):
+    filters = []
+    params = []
+
+    if final_status:
+        filters.append("S.FinalStatus = ?")
+        params.append(final_status)
+
+    if search_text:
+        filters.append(
+            "(E.EmployeeNumber LIKE ? OR P.FirstName LIKE ? OR P.LastName LIKE ?)"
+        )
+        value = f"%{search_text}%"
+        params.extend([value, value, value])
+
+    if date_from:
+        filters.append("date(S.EntryTime) >= date(?)")
+        params.append(date_from)
+
+    if date_to:
+        filters.append("date(S.EntryTime) <= date(?)")
+        params.append(date_to)
+
+    where_clause = ""
+
+    if filters:
+        where_clause = "WHERE " + " AND ".join(filters)
+
+    query = f"""
+        SELECT COUNT(*) AS Total
+        FROM AccessSession S
+        LEFT JOIN Employee E ON E.EmployeeID = S.EmployeeID
+        LEFT JOIN Person P ON P.PersonID = E.PersonID
+        {where_clause};
+    """
+
+    result = execute_query_one(query, tuple(params))
+
+    if result:
+        return result["Total"]
+
+    return 0

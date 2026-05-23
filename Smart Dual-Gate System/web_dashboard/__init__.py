@@ -1,0 +1,1 @@
+"""Mantrap admin dashboard package."""

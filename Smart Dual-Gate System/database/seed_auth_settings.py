@@ -1,6 +1,9 @@
-from database.system_setting_repository import (
-    save_setting
-)
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from database.system_setting_repository import save_setting
 
 
 def seed_authentication_settings():

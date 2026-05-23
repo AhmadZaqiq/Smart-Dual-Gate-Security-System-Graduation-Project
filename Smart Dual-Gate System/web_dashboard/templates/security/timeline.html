@@ -1,0 +1,19 @@
+{% extends "layouts/base.html" %}
+{% block title %}Security Timeline{% endblock %}
+{% block content %}
+{% set title = "Security Timeline" %}{% include "layouts/partials/_page_header.html" %}
+<ul class="timeline">
+{% for event in events %}
+<li class="timeline-event">
+    <div class="timeline-event-icon bg-{{ 'danger' if event.Severity=='HIGH' else 'warning' if event.Severity=='MEDIUM' else 'secondary' }}"></div>
+    <div class="card timeline-event-card">
+        <div class="card-body">
+            <div class="text-secondary small">{{ event.CreationDate }}</div>
+            <h4>{{ event.EventType }} <span class="badge {{ event.Severity|badge_class }}">{{ event.Severity }}</span></h4>
+            <p>{{ event.Description or 'No description.' }}</p>
+        </div>
+    </div>
+</li>
+{% else %}<li class="text-secondary">No events in timeline.</li>{% endfor %}
+</ul>
+{% endblock %}
