@@ -30,12 +30,8 @@ app = Flask(__name__)
 
 def open_camera_with_fallback():
     candidates = [
-        "/dev/video1",
-        1,
-        "/dev/video3",
-        3,
-        "/dev/video4",
-        4,
+        FACE_DEVICE,
+        "/dev/mantrap-facecam",
     ]
 
     for candidate in candidates:

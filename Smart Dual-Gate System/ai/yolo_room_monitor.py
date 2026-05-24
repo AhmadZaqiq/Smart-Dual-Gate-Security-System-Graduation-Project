@@ -1,12 +1,15 @@
 import cv2
 import time
 import threading
+import os
+import signal
+import subprocess
 from collections import deque
 from flask import Flask, Response
 from ultralytics import YOLO
 
 MODEL_PATH = "ai/models/human_figure_yolo.pt"
-CAMERA_PATH = "/dev/video4"
+CAMERA_PATH = "/dev/mantrap-innercam"
 CONFIDENCE_THRESHOLD = 0.50
 
 FRAME_WIDTH = 640
@@ -46,6 +49,108 @@ def load_model():
         print("[AI] YOLO model loaded", flush=True)
 
 
+def get_process_command(pid):
+    try:
+        cmdline_path = f"/proc/{pid}/cmdline"
+
+        with open(cmdline_path, "rb") as file:
+            raw_command = file.read()
+
+        command = raw_command.replace(b"\x00", b" ").decode(errors="ignore").strip()
+        return command
+
+    except Exception:
+        return ""
+
+
+def get_camera_owner_pids(camera_path):
+    pids = set()
+
+    camera_paths = {
+        camera_path,
+        os.path.realpath(camera_path),
+    }
+
+    for path in camera_paths:
+        if not path or not os.path.exists(path):
+            continue
+
+        try:
+            result = subprocess.run(
+                ["fuser", path],
+                capture_output=True,
+                text=True,
+                timeout=3
+            )
+
+            output = f"{result.stdout} {result.stderr}"
+
+            for token in output.replace(":", " ").split():
+                if token.isdigit():
+                    pids.add(int(token))
+
+        except Exception as error:
+            print(f"[AI] Failed to check InnerCam owner for {path}: {error}", flush=True)
+
+    return sorted(pids)
+
+
+def force_release_inner_camera():
+    current_pid = os.getpid()
+    owner_pids = get_camera_owner_pids(CAMERA_PATH)
+
+    if not owner_pids:
+        print("[AI] InnerCam is free", flush=True)
+        return
+
+    print(f"[AI] InnerCam owner processes detected: {owner_pids}", flush=True)
+
+    target_pids = []
+
+    for pid in owner_pids:
+        if pid == current_pid:
+            continue
+
+        command = get_process_command(pid)
+
+        if "main.py" in command:
+            print(f"[AI] Skipping main.py process using InnerCam: PID {pid}", flush=True)
+            continue
+
+        target_pids.append(pid)
+        print(f"[AI] Releasing InnerCam from PID {pid}: {command}", flush=True)
+
+    if not target_pids:
+        return
+
+    for pid in target_pids:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        except Exception as error:
+            print(f"[AI] Failed to terminate PID {pid}: {error}", flush=True)
+
+    time.sleep(2)
+
+    for pid in target_pids:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            continue
+        except Exception:
+            continue
+
+        try:
+            print(f"[AI] Force killing InnerCam owner PID {pid}", flush=True)
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except Exception as error:
+            print(f"[AI] Failed to kill PID {pid}: {error}", flush=True)
+
+    time.sleep(1)
+
 def open_camera():
     global camera
 
@@ -53,6 +158,7 @@ def open_camera():
         return True
 
     print(f"[AI] Opening InnerCam: {CAMERA_PATH}", flush=True)
+    force_release_inner_camera()
 
     camera = cv2.VideoCapture(CAMERA_PATH, cv2.CAP_V4L2)
     camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))

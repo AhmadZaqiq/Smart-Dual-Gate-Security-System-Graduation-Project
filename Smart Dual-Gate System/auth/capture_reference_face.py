@@ -2,8 +2,8 @@ import cv2
 import os
 import time
 
-FACE_CAM_DEVICE = "/dev/video0"
-SAVE_PATH = os.path.expanduser("~/mantrap_project/auth/face_data/reference_face.jpg")
+FACE_CAM_DEVICE = "/dev/mantrap-facecam"
+SAVE_PATH = os.path.expanduser("~/mantrap_project/Smart Dual-Gate System/auth/face_data/reference_face.jpg")
 
 cap = cv2.VideoCapture(FACE_CAM_DEVICE, cv2.CAP_V4L2)
 

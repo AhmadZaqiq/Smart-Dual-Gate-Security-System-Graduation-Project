@@ -18,7 +18,7 @@ DATABASE_PATH = PROJECT_DIR / "database" / "mantrap.db"
 try:
     from config.settings import FACE_CAM_DEVICE
 except ImportError:
-    FACE_CAM_DEVICE = "/dev/video0"
+    FACE_CAM_DEVICE = "/dev/mantrap-facecam"
 
 FRAME_SCALE = 0.5
 FACE_TOLERANCE = 0.5
@@ -160,14 +160,8 @@ def save_face_debug_frame(frame, name="last_face_auth_frame.jpg"):
 
 def open_face_camera():
     candidates = [
-        "/dev/video1",
-        1,
-        "/dev/video3",
-        3,
-        "/dev/video4",
-        4,
-        "/dev/video0",
-        0,
+        FACE_CAM_DEVICE,
+        "/dev/mantrap-facecam",
     ]
 
     for candidate in candidates:

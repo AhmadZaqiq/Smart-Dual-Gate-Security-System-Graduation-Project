@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from config.settings import FACE_CAM_DEVICE
 except ImportError:
-    FACE_CAM_DEVICE = "/dev/video0"
+    FACE_CAM_DEVICE = "/dev/mantrap-facecam"
 
 PREDICTOR_PATH = "ai/models/shape_predictor_68_face_landmarks.dat"
 

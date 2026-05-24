@@ -9,8 +9,8 @@ SYSTEM_NAME = "Smart Dual-Gate Security System"
 # Camera Devices
 # =========================
 
-FACE_CAM_DEVICE = "/dev/video1"
-INNER_CAM_DEVICE = "/dev/video4"
+FACE_CAM_DEVICE = "/dev/mantrap-facecam"
+INNER_CAM_DEVICE = "/dev/mantrap-innercam"
 
 
 # =========================
