@@ -158,6 +158,18 @@
                 return;
             }
 
+            if (this.currentStep === 2 && !this.validateRfid()) {
+                return;
+            }
+
+            if (this.currentStep === 3 && !this.validateFingerprint()) {
+                return;
+            }
+
+            if (this.currentStep === 4 && !this.validateFaceImage()) {
+                return;
+            }
+
             this.showStep(this.currentStep + 1);
         },
 
@@ -171,6 +183,59 @@
 
             if (missing.length > 0) {
                 this.showMessage("Please fill all employee information fields.", "error");
+                return false;
+            }
+
+            return true;
+        },
+
+        validateRfid() {
+            if (!this.data.rfid_uid) {
+                this.showMessage("RFID card registration is required before continuing.", "error");
+                return false;
+            }
+
+            return true;
+        },
+
+        validateFingerprint() {
+            if (!this.data.fingerprint_position) {
+                this.showMessage("Fingerprint enrollment is required before continuing.", "error");
+                return false;
+            }
+
+            return true;
+        },
+
+        validateFaceImage() {
+            this.collectFormData();
+
+            if (!this.data.face_image_path) {
+                this.showMessage("Face image path is required before continuing.", "error");
+                return false;
+            }
+
+            return true;
+        },
+
+        validateFullEnrollment() {
+            if (!this.validateInformation()) {
+                this.showStep(1);
+                return false;
+            }
+
+            if (!this.validateRfid()) {
+                this.showStep(2);
+                return false;
+            }
+
+            if (!this.validateFingerprint()) {
+                this.showStep(3);
+                return false;
+            }
+
+            if (!this.validateFaceImage()) {
+                this.showStep(4);
                 return false;
             }
 
@@ -338,8 +403,7 @@
         async saveEmployee() {
             this.collectFormData();
 
-            if (!this.validateInformation()) {
-                this.showStep(1);
+            if (!this.validateFullEnrollment()) {
                 return;
             }
 
@@ -437,3 +501,256 @@
 
     window.MantrapEmployeeWizard = Wizard;
 })();
+
+
+/* ===== FACE IMAGE CAPTURE START ===== */
+(function () {
+    "use strict";
+
+    let facePreviewRunning = false;
+
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute("content") : "";
+    }
+
+    function normalizeStreamUrl(url) {
+        if (!url) {
+            return null;
+        }
+
+        try {
+            const streamUrl = new URL(url, window.location.origin);
+
+            if (
+                streamUrl.hostname === "127.0.0.1"
+                || streamUrl.hostname === "localhost"
+                || streamUrl.hostname === "0.0.0.0"
+            ) {
+                streamUrl.hostname = window.location.hostname;
+            }
+
+            return streamUrl.toString();
+        } catch (error) {
+            return url;
+        }
+    }
+
+    function getFaceElements() {
+        return {
+            startBtn: document.getElementById("face-camera-start-btn"),
+            captureBtn: document.getElementById("face-camera-capture-btn"),
+            retakeBtn: document.getElementById("face-camera-retake-btn"),
+            livePreview: document.getElementById("face-live-preview"),
+            capturedPreview: document.getElementById("face-captured-preview"),
+            statusBox: document.getElementById("face-capture-status-box"),
+            pathInput: document.getElementById("face-image-path-input"),
+            employeeNumberInput: document.querySelector('[name="employee_number"]')
+        };
+    }
+
+    function setFaceStatus(message, type) {
+        const elements = getFaceElements();
+
+        if (!elements.statusBox) {
+            return;
+        }
+
+        elements.statusBox.textContent = message || "";
+        elements.statusBox.classList.remove("is-success", "is-error", "is-running", "is-warning");
+
+        if (type === "success") {
+            elements.statusBox.classList.add("is-success");
+        } else if (type === "error") {
+            elements.statusBox.classList.add("is-error");
+        } else if (type === "warning") {
+            elements.statusBox.classList.add("is-warning");
+        } else {
+            elements.statusBox.classList.add("is-running");
+        }
+    }
+
+    async function callFaceStreamAction(action) {
+        const response = await fetch(`/api/streams/face/${action}`, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCsrfToken(),
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || data.message || "Face stream action failed.");
+        }
+
+        return data;
+    }
+
+    async function getFaceStreamStatus() {
+        const response = await fetch("/api/streams/status", {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        const streams = payload.data || {};
+        return streams.face || {};
+    }
+
+    async function startFaceCamPreview() {
+        const elements = getFaceElements();
+
+        if (!elements.livePreview) {
+            return;
+        }
+
+        try {
+            setFaceStatus("Starting FaceCam stream...", "running");
+
+            await callFaceStreamAction("start");
+
+            let faceStream = null;
+
+            for (let attempt = 0; attempt < 8; attempt += 1) {
+                faceStream = await getFaceStreamStatus();
+
+                if (faceStream.health === "ONLINE" && faceStream.url) {
+                    break;
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, 500));
+            }
+
+            const browserUrl = normalizeStreamUrl(faceStream && faceStream.url);
+
+            if (!browserUrl || faceStream.health !== "ONLINE") {
+                throw new Error("FaceCam stream started, but no live URL is available.");
+            }
+
+            elements.livePreview.onerror = function () {
+                setFaceStatus("FaceCam stream URL is not reachable from browser.", "error");
+            };
+
+            elements.livePreview.src = `${browserUrl}?ts=${Date.now()}`;
+            elements.livePreview.dataset.src = browserUrl;
+            elements.livePreview.style.display = "block";
+
+            facePreviewRunning = true;
+
+            setFaceStatus("FaceCam live preview started. Position the face, then click Capture Face.", "success");
+        } catch (error) {
+            setFaceStatus(error.message || "Could not start FaceCam preview.", "error");
+            console.error(error);
+        }
+    }
+
+    async function stopFaceCamPreview() {
+        const elements = getFaceElements();
+
+        try {
+            if (elements.livePreview) {
+                elements.livePreview.removeAttribute("src");
+                elements.livePreview.dataset.src = "";
+            }
+
+            await callFaceStreamAction("stop");
+        } catch (error) {
+            console.warn("Face stream stop failed", error);
+        } finally {
+            facePreviewRunning = false;
+        }
+    }
+
+    async function captureFaceImage() {
+        const elements = getFaceElements();
+        const employeeNumber = elements.employeeNumberInput ? elements.employeeNumberInput.value.trim() : "";
+
+        if (!employeeNumber) {
+            setFaceStatus("Please enter the employee number first.", "error");
+            return;
+        }
+
+        try {
+            setFaceStatus("Capturing and saving face image from the same FaceCam preview stream...", "running");
+
+            const response = await fetch("/employees/api/enrollment/face/capture", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    employee_number: employeeNumber
+                })
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || "Face capture failed.");
+            }
+
+            if (elements.capturedPreview && data.image_data) {
+                elements.capturedPreview.src = data.image_data;
+                elements.capturedPreview.style.display = "block";
+            }
+
+            if (elements.pathInput) {
+                elements.pathInput.value = data.face_image_path || "";
+                elements.pathInput.dispatchEvent(new Event("input", { bubbles: true }));
+                elements.pathInput.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+
+            setFaceStatus("Face image captured and saved successfully.", "success");
+        } catch (error) {
+            setFaceStatus(error.message || "Face capture failed.", "error");
+            console.error(error);
+        }
+    }
+
+    function retakeFaceImage() {
+        const elements = getFaceElements();
+
+        if (elements.capturedPreview) {
+            elements.capturedPreview.src = "";
+            elements.capturedPreview.style.display = "none";
+        }
+
+        if (elements.pathInput) {
+            elements.pathInput.value = "";
+            elements.pathInput.dispatchEvent(new Event("input", { bubbles: true }));
+            elements.pathInput.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+
+        setFaceStatus("Captured image cleared. Keep FaceCam preview running and capture again.", "warning");
+    }
+
+    function bindFaceCapture() {
+        const elements = getFaceElements();
+
+        if (!elements.startBtn || elements.startBtn.dataset.faceBound === "1") {
+            return;
+        }
+
+        elements.startBtn.dataset.faceBound = "1";
+
+        elements.startBtn.addEventListener("click", startFaceCamPreview);
+        elements.captureBtn?.addEventListener("click", captureFaceImage);
+        elements.retakeBtn?.addEventListener("click", retakeFaceImage);
+
+        window.addEventListener("beforeunload", function () {
+            if (facePreviewRunning) {
+                stopFaceCamPreview();
+            }
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", bindFaceCapture);
+})();
+/* ===== FACE IMAGE CAPTURE END ===== */
+

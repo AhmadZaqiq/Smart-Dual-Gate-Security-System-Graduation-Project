@@ -28,6 +28,40 @@ JPEG_QUALITY = 65
 
 app = Flask(__name__)
 
+def open_camera_with_fallback():
+    candidates = [
+        "/dev/video1",
+        1,
+        "/dev/video3",
+        3,
+        "/dev/video4",
+        4,
+    ]
+
+    for candidate in candidates:
+        print(f"[FACE_STREAM] Trying FaceCam candidate: {candidate}", flush=True)
+
+        cam = cv2.VideoCapture(candidate, cv2.CAP_V4L2)
+
+        if cam.isOpened():
+            cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"YUYV"))
+            cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            cam.set(cv2.CAP_PROP_FPS, 10)
+            cam.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+            ok, frame = cam.read()
+
+            if ok and frame is not None:
+                print(f"[FACE_STREAM] FaceCam opened successfully: {candidate}", flush=True)
+                return cam
+
+        cam.release()
+
+    return None
+
+
+
 camera = None
 latest_frame = None
 running = True

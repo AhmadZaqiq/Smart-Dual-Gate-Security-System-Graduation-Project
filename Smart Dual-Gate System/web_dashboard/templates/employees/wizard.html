@@ -53,8 +53,42 @@
         <div class="wizard-step" data-step="4">
             <h3 class="mb-3">Face Image Upload</h3>
             <label class="form-label">Face Image Path</label>
-            <input class="form-control" name="face_image_path" placeholder="e.g. data/faces/employee_001.jpg">
-            <div class="form-hint mt-2">Provide the stored face image path used by the recognition module.</div>
+
+            <div class="face-capture-panel mt-3 mb-3">
+                <div class="face-capture-actions d-flex flex-wrap gap-2 mb-3">
+                    <button type="button" class="btn btn-enroll btn-enroll-start" id="face-camera-start-btn">
+                        Preview FaceCam
+                    </button>
+
+                    <button type="button" class="btn btn-wizard-nav btn-wizard-next" id="face-camera-capture-btn">
+                        Capture Face
+                    </button>
+
+                    <button type="button" class="btn btn-enroll btn-enroll-retry" id="face-camera-retake-btn">
+                        Retake
+                    </button>
+                </div>
+
+                <div class="face-capture-grid">
+                    <div class="face-capture-preview-card">
+                        <div class="face-capture-preview-title">FaceCam Preview</div>
+                        <img id="face-live-preview" alt="FaceCam live preview" />
+                    </div>
+
+                    <div class="face-capture-preview-card">
+                        <div class="face-capture-preview-title">Captured Image</div>
+                        <img id="face-captured-preview" alt="Captured face preview" />
+                    </div>
+                </div>
+
+                
+
+                <div class="face-capture-status mt-3" id="face-capture-status-box">
+                    Click "Preview FaceCam", then "Capture Face" to save the employee face image.
+                </div>
+            </div>
+            <input type="text" class="form-control" name="face_image_path" id="face-image-path-input" placeholder="Captured face image path will appear here" readonly>
+            <div class="form-hint mt-2">Use the Raspberry Pi FaceCam to capture the employee face image automatically.</div>
         </div>
 
         <div class="wizard-step" data-step="5">

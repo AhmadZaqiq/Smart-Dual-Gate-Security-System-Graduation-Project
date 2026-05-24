@@ -202,6 +202,15 @@ def _enrollment_create_or_update_employee(payload):
     if not employee_number or not first_name or not last_name:
         return False, "Employee number, first name, and last name are required.", None
 
+    if not rfid_uid:
+        return False, "RFID card registration is required.", None
+
+    if fingerprint_position is None:
+        return False, "Fingerprint enrollment is required.", None
+
+    if not face_image_path:
+        return False, "Face image path is required.", None
+
     full_name = " ".join(
         part for part in [first_name, second_name, third_name, last_name] if part
     )
@@ -585,5 +594,149 @@ if _soft_delete_csrf is not None:
     except Exception as error:
         print(f"[EMPLOYEES] Delete CSRF exempt warning: {error}")
 
-# ===== MANTRAP EMPLOYEE SOFT DELETE API END =====
+# ===== MANTRAP EMPLOYEE SOFT DELETE API END =====\n
 
+
+
+
+
+# ===== MANTRAP FACE CAPTURE API START =====
+
+import base64 as _face_capture_base64
+import re as _face_capture_re
+import requests as _face_capture_requests
+from datetime import datetime as _face_capture_datetime
+from flask import request as _face_capture_request
+from flask import jsonify as _face_capture_jsonify
+from web_dashboard.config import Config as _FaceCaptureConfig
+from web_dashboard.services import stream_service as _face_stream_service
+
+
+def _face_capture_safe_filename(value):
+    safe_value = _face_capture_re.sub(r"[^A-Za-z0-9_-]+", "_", value).strip("_")
+    if not safe_value:
+        safe_value = "employee_" + _face_capture_datetime.now().strftime("%Y%m%d_%H%M%S")
+    return safe_value
+
+
+def _face_capture_get_stream_url():
+    # Use the same FaceCam stream used by Live Monitor.
+    success, message = _face_stream_service.start_face_stream()
+
+    if not success:
+        return False, message, None
+
+    status = _face_stream_service.get_streams_status()
+    face_status = status.get("face") or {}
+
+    if face_status.get("health") != "ONLINE" or not face_status.get("url"):
+        return False, "FaceCam stream is not online.", None
+
+    return True, "FaceCam stream is online.", face_status.get("url")
+
+
+def _face_capture_read_jpeg_from_mjpeg_stream(stream_url):
+    try:
+        response = _face_capture_requests.get(
+            stream_url,
+            stream=True,
+            timeout=6
+        )
+
+        if response.status_code != 200:
+            return False, f"Face stream returned HTTP {response.status_code}.", None
+
+        buffer = b""
+
+        for chunk in response.iter_content(chunk_size=4096):
+            if not chunk:
+                continue
+
+            buffer += chunk
+
+            start_index = buffer.find(b"\xff\xd8")
+            end_index = buffer.find(b"\xff\xd9")
+
+            if start_index != -1 and end_index != -1 and end_index > start_index:
+                jpeg_bytes = buffer[start_index:end_index + 2]
+                response.close()
+                return True, "Face frame captured from live stream.", jpeg_bytes
+
+            if len(buffer) > 1024 * 1024:
+                buffer = buffer[-200000:]
+
+        return False, "No JPEG frame was received from FaceCam stream.", None
+
+    except Exception as error:
+        return False, f"Could not read FaceCam stream frame: {error}", None
+
+
+@employees_bp.route("/api/enrollment/face/capture", methods=["POST"])
+def api_capture_face_image():
+    payload = _face_capture_request.get_json(silent=True) or {}
+    employee_number = str(payload.get("employee_number", "")).strip()
+
+    if not employee_number:
+        return _face_capture_jsonify({
+            "success": False,
+            "message": "Employee number is required before capturing the face image."
+        }), 400
+
+    success, message, stream_url = _face_capture_get_stream_url()
+
+    if not success:
+        return _face_capture_jsonify({
+            "success": False,
+            "message": message,
+        }), 400
+
+    success, message, image_bytes = _face_capture_read_jpeg_from_mjpeg_stream(stream_url)
+
+    if not success:
+        return _face_capture_jsonify({
+            "success": False,
+            "message": message,
+            "stream_url": stream_url,
+        }), 400
+
+    try:
+        face_dir = _FaceCaptureConfig.PROJECT_ROOT / "auth" / "face_data" / "employees"
+        face_dir.mkdir(parents=True, exist_ok=True)
+
+        safe_name = _face_capture_safe_filename(employee_number)
+        image_path = face_dir / f"{safe_name}.jpg"
+
+        with open(image_path, "wb") as image_file:
+            image_file.write(image_bytes)
+
+        image_data = "data:image/jpeg;base64," + _face_capture_base64.b64encode(image_bytes).decode("utf-8")
+        relative_path = str(image_path.relative_to(_FaceCaptureConfig.PROJECT_ROOT)).replace("\\", "/")
+
+        return _face_capture_jsonify({
+            "success": True,
+            "message": "Face image captured successfully.",
+            "face_image_path": relative_path,
+            "image_data": image_data,
+            "stream_url": stream_url,
+        })
+
+    except Exception as error:
+        return _face_capture_jsonify({
+            "success": False,
+            "message": f"Face image save failed: {error}",
+        }), 500
+
+
+try:
+    from web_dashboard.extensions import csrf as _face_capture_csrf
+except Exception:
+    _face_capture_csrf = None
+
+if _face_capture_csrf is not None:
+    try:
+        api_capture_face_image = _face_capture_csrf.exempt(api_capture_face_image)
+        print("[EMPLOYEES] Face capture API CSRF exempt enabled")
+    except Exception as error:
+        print(f"[EMPLOYEES] Face capture CSRF exempt warning: {error}")
+
+# ===== MANTRAP FACE CAPTURE API END =====

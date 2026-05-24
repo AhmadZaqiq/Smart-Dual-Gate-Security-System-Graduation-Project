@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import sys
 import time
 import sqlite3
@@ -9,6 +10,7 @@ import cv2
 import face_recognition
 
 warnings.filterwarnings("ignore")
+
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DATABASE_PATH = PROJECT_DIR / "database" / "mantrap.db"
@@ -94,20 +96,6 @@ def load_reference_encoding(reference_image_path):
     return reference_encodings[0]
 
 
-def open_camera():
-    print("FACE_OPENING_CAMERA", flush=True)
-
-    camera = cv2.VideoCapture(FACE_CAM_DEVICE, cv2.CAP_V4L2)
-
-    if not camera.isOpened():
-        print("FACE_CAMERA_OPEN_FAILED", flush=True)
-        return None
-
-    time.sleep(CAMERA_WARMUP_DELAY)
-
-    print("FACE_CAMERA_READY", flush=True)
-    return camera
-
 
 def process_frame(frame):
     small_frame = cv2.resize(
@@ -148,6 +136,80 @@ def cleanup_camera(camera):
         camera.release()
 
     print("FACE_CAMERA_RELEASED", flush=True)
+
+
+
+
+
+
+
+
+
+FACE_DEBUG_DIR = Path("runtime/face_debug")
+FACE_DEBUG_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def save_face_debug_frame(frame, name="last_face_auth_frame.jpg"):
+    try:
+        debug_path = FACE_DEBUG_DIR / name
+        cv2.imwrite(str(debug_path), frame)
+        print(f"FACE_DEBUG_FRAME_SAVED:{debug_path}", flush=True)
+    except Exception as error:
+        print(f"FACE_DEBUG_SAVE_FAILED:{error}", flush=True)
+
+
+def open_face_camera():
+    candidates = [
+        "/dev/video1",
+        1,
+        "/dev/video3",
+        3,
+        "/dev/video4",
+        4,
+        "/dev/video0",
+        0,
+    ]
+
+    for candidate in candidates:
+        print(f"FACE_TRYING_CAMERA:{candidate}", flush=True)
+
+        camera = cv2.VideoCapture(candidate, cv2.CAP_V4L2)
+
+        if not camera.isOpened():
+            print(f"FACE_CAMERA_FAILED:{candidate}", flush=True)
+            camera.release()
+            continue
+
+        camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"YUYV"))
+        camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        camera.set(cv2.CAP_PROP_FPS, 10)
+        camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+        for _ in range(10):
+            ok, frame = camera.read()
+
+            if ok and frame is not None:
+                print(f"FACE_CAMERA_OPENED:{candidate}", flush=True)
+                save_face_debug_frame(frame, "camera_open_test.jpg")
+                return camera
+
+        print(f"FACE_CAMERA_NO_FRAME:{candidate}", flush=True)
+        camera.release()
+
+    return None
+
+
+def open_camera():
+    print("FACE_OPENING_CAMERA", flush=True)
+
+    camera = open_face_camera()
+
+    if camera is None:
+        print("FACE_CAMERA_OPEN_FAILED", flush=True)
+
+    return camera
+
 
 
 def main():
