@@ -172,6 +172,102 @@ window.MantrapVisual = (function () {
         sprite.userData.texture.needsUpdate = true;
     }
 
+    function doorBadgeColors(state) {
+        const normalized = normalizeDoor(state);
+
+        if (normalized === "OPEN") {
+            return {
+                border: "#22d3ee",
+                status: "#67e8f9",
+                background: "rgba(8, 47, 73, 0.74)",
+            };
+        }
+
+        if (normalized === "CLOSED") {
+            return {
+                border: "#10b981",
+                status: "#86efac",
+                background: "rgba(6, 78, 59, 0.72)",
+            };
+        }
+
+        return {
+            border: "#64748b",
+            status: "#cbd5e1",
+            background: "rgba(30, 41, 59, 0.72)",
+        };
+    }
+
+    function createDoorBadgeSprite(label, state = "UNKNOWN") {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 160;
+
+        const ctx = canvas.getContext("2d");
+
+        function draw(currentState) {
+            const colors = doorBadgeColors(currentState);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = colors.background;
+            ctx.strokeStyle = colors.border;
+            ctx.lineWidth = 5;
+
+            const x = 22;
+            const y = 28;
+            const w = canvas.width - 44;
+            const h = canvas.height - 56;
+            const r = 28;
+
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.font = "900 48px Arial";
+            ctx.fillStyle = "#e2e8f0";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(label, canvas.width / 2, canvas.height / 2);
+        }
+
+        draw(state);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            depthTest: false,
+        });
+
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(0.72, 0.24, 1);
+        sprite.userData.drawDoorBadge = draw;
+        sprite.userData.texture = texture;
+
+        return sprite;
+    }
+
+    function updateDoorBadgeSprite(sprite, state) {
+        if (!sprite || !sprite.userData.drawDoorBadge || !sprite.userData.texture) {
+            return;
+        }
+
+        sprite.userData.drawDoorBadge(state);
+        sprite.userData.texture.needsUpdate = true;
+    }
+
     function createSingleDoorSystem(xPosition, label, side) {
         const group = new THREE.Group();
         group.position.set(xPosition, 0, 0);
@@ -233,22 +329,28 @@ window.MantrapVisual = (function () {
             emissiveIntensity: 0.12,
         });
 
-        const handle = makeBox(0.03, 0.18, 0.03, handleMat);
-        handle.position.set(side === "left" ? 0.65 : -0.65, 0, 0.045);
-        leaf.add(handle);
+        const handleX = side === "left" ? 0.28 : -0.48;
+
+        const frontHandle = makeBox(0.035, 0.20, 0.025, handleMat);
+        frontHandle.position.set(handleX, 0, 0.052);
+
+        const backHandle = makeBox(0.035, 0.20, 0.025, handleMat);
+        backHandle.position.set(handleX, 0, -0.052);
+
+        leaf.add(frontHandle);
+        leaf.add(backHandle);
 
         pivot.add(leaf);
 
-        const labelSprite = createTextSprite(label);
-        labelSprite.position.set(0, 1.92, 0);
-
-        group.add(frameTop, frameLeft, frameRight, pivot, labelSprite);
+        group.add(frameTop, frameLeft, frameRight, pivot);
 
         return {
             group,
             pivot,
             leaf,
             side,
+            label,
+            statusBadge: null,
             targetState: "UNKNOWN",
         };
     }
@@ -713,10 +815,6 @@ window.MantrapVisual = (function () {
             chamberGroup.add(mesh);
         });
 
-        const chamberLabel = createTextSprite("SECURE CHAMBER", "#bae6fd");
-        chamberLabel.position.set(0, 2.05, -0.35);
-        chamberGroup.add(chamberLabel);
-
         personGroup = new THREE.Group();
         personGroup.position.y = 0.05;
         chamberGroup.add(personGroup);
@@ -732,6 +830,16 @@ window.MantrapVisual = (function () {
 
         outerDoor.group.rotation.y = Math.PI / 2;
         innerDoor.group.rotation.y = Math.PI / 2;
+
+        outerDoor.statusBadge = createDoorBadgeSprite("OUTER", "UNKNOWN");
+        outerDoor.statusBadge.position.set(0, 1.46, -0.02);
+        outerDoor.statusBadge.scale.set(0.52, 0.18, 1);
+        outerDoor.group.add(outerDoor.statusBadge);
+
+        innerDoor.statusBadge = createDoorBadgeSprite("INNER", "UNKNOWN");
+        innerDoor.statusBadge.position.set(0, 1.46, -0.02);
+        innerDoor.statusBadge.scale.set(0.52, 0.18, 1);
+        innerDoor.group.add(innerDoor.statusBadge);
 
         rootGroup.add(outerDoor.group);
         rootGroup.add(innerDoor.group);
@@ -915,6 +1023,8 @@ view.lastX = event.clientX;
                 ? 0x10b981
                 : 0x64748b;
 
+        updateDoorBadgeSprite(door.statusBadge, normalized);
+
         door.group.traverse((child) => {
             if (child.isMesh && child.material && child.material.emissive) {
                 child.material.emissive.setHex(color);
@@ -995,7 +1105,6 @@ view.lastX = event.clientX;
             });
         }
     }
-
     function updateOverlay(status) {
         const stage = document.getElementById("mantrap-stage");
         const modeBadge = document.getElementById("mantrap-visual-mode-badge");
