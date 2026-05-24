@@ -9,6 +9,11 @@
 
         <div class="mantrap-3d-header-actions">
             <span class="badge" id="mantrap-visual-mode-badge">NORMAL</span>
+            <div class="mantrap-view-preset-group">
+                <button type="button" class="btn btn-sm btn-outline-info mantrap-view-preset" data-view="top">Top</button>
+                <button type="button" class="btn btn-sm btn-outline-info mantrap-view-preset" data-view="front">Front</button>
+                <button type="button" class="btn btn-sm btn-outline-info mantrap-view-preset" data-view="side">Side</button>
+            </div>
             <button type="button" class="btn btn-sm btn-outline-info" id="mantrap-3d-reset-view">
                 <i class="ti ti-refresh me-1"></i>Reset View
             </button>
@@ -28,6 +33,12 @@
                 <div class="mantrap-3d-overlay top-right">
                     <div class="overlay-label">Detected Persons</div>
                     <div class="overlay-value" id="visual-person-count">0</div>
+                </div>
+
+                <div class="mantrap-inner-countdown d-none" id="inner-confirm-countdown">
+                    <div class="countdown-label">Inner Confirmation</div>
+                    <div class="countdown-value" id="inner-confirm-countdown-value">10</div>
+                    <div class="countdown-note">Press inner button</div>
                 </div>
 
                 <div class="mantrap-3d-hint">

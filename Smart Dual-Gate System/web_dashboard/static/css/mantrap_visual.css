@@ -230,3 +230,98 @@
     transform: translateX(-50%);
     z-index: 5;
 }
+
+
+/* Advanced 3D visual features */
+.mantrap-view-preset-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.mantrap-view-preset {
+    min-width: 54px;
+    font-size: 0.72rem;
+    padding: 0.25rem 0.55rem;
+}
+
+.mantrap-inner-countdown {
+    position: absolute;
+    left: 50%;
+    top: 4.5rem;
+    transform: translateX(-50%);
+    z-index: 6;
+    min-width: 150px;
+    padding: 0.62rem 0.8rem;
+    border-radius: 16px;
+    text-align: center;
+    background: rgba(8, 15, 28, 0.78);
+    border: 1px solid rgba(34, 211, 238, 0.34);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 0 24px rgba(34, 211, 238, 0.18);
+}
+
+.mantrap-inner-countdown.warning {
+    border-color: rgba(245, 158, 11, 0.64);
+    box-shadow: 0 0 26px rgba(245, 158, 11, 0.24);
+}
+
+.countdown-label {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    color: #94a3b8;
+    font-weight: 800;
+}
+
+.countdown-value {
+    font-size: 2rem;
+    line-height: 1.1;
+    font-weight: 900;
+    color: #67e8f9;
+}
+
+.mantrap-inner-countdown.warning .countdown-value {
+    color: #fcd34d;
+}
+
+.countdown-note {
+    font-size: 0.68rem;
+    color: #cbd5e1;
+}
+
+@media (max-width: 768px) {
+    .mantrap-view-preset-group {
+        width: 100%;
+    }
+
+    .mantrap-view-preset {
+        flex: 1;
+    }
+
+    .mantrap-inner-countdown {
+        top: 5rem;
+        min-width: 130px;
+    }
+}
+
+
+/* 3D preset and countdown refinement */
+.mantrap-inner-countdown {
+    top: 3.8rem !important;
+    z-index: 10 !important;
+    pointer-events: none;
+}
+
+.mantrap-inner-countdown:not(.d-none) {
+    display: block !important;
+}
+
+.mantrap-3d-hint {
+    top: 1rem !important;
+}
+
+.mantrap-view-preset.active {
+    box-shadow: 0 0 18px rgba(34, 211, 238, 0.28);
+}

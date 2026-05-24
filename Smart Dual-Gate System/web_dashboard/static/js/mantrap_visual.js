@@ -11,6 +11,8 @@ window.MantrapVisual = (function () {
     let personGroup = null;
     let alarmLight = null;
     let statusLine = null;
+    let stageGlowGroup = null;
+    let accessPathLine = null;
     let animationStarted = false;
     let threeLoading = false;
     let lastStatus = null;
@@ -18,6 +20,10 @@ window.MantrapVisual = (function () {
     let innerDoorPendingState = null;
     let innerDoorPendingCount = 0;
     let persistedDetectedPersonCount = 0;
+    let currentWorkflowState = "SYSTEM_OFF";
+    let workflowStateChangedAt = Date.now();
+    let personExitActive = false;
+    let personExitCompleted = false;
 
     const view = {
         rotationX: -0.42,
@@ -26,6 +32,8 @@ window.MantrapVisual = (function () {
         targetRotationY: 0.62,
         zoom: 1,
         targetZoom: 1,
+        offsetY: 0,
+        targetOffsetY: 0,
         dragging: false,
         lastX: 0,
         lastY: 0,
@@ -337,10 +345,254 @@ window.MantrapVisual = (function () {
         label.scale.set(0.45, 0.18, 1);
         label.position.set(0, 1.2, 0);
 
-        group.add(head, body, leftArm, rightArm, leftLeg, rightLeg, ring, label);
+        group.add(head, body, leftArm, rightArm, leftLeg, rightLeg, ring, label, createAuthCheckpointDots());
 
         return group;
     }
+
+
+    function getActiveStage(status) {
+        return status?.workflow?.active_stage || status?.auth_stage || status?.fsm_state || "unknown";
+    }
+
+    function isAccessExitState(status) {
+        const activeStage = getActiveStage(status);
+        return (
+            status?.fsm_state === "INNER_DOOR_UNLOCKED" ||
+            activeStage === "inner_door" ||
+            activeStage === "granted"
+        );
+    }
+
+    function stageColor(stage, status) {
+        if (status?.fsm_state === "SECURITY_LOCKDOWN" || stage === "lockdown") {
+            return 0xef4444;
+        }
+
+        if (stage === "occupancy") {
+            return 0xf59e0b;
+        }
+
+        if (stage === "rfid" || stage === "fingerprint" || stage === "face" || stage === "behavior") {
+            return 0x38bdf8;
+        }
+
+        if (stage === "chamber") {
+            return 0xfacc15;
+        }
+
+        if (stage === "inner_door" || stage === "granted") {
+            return 0x22c55e;
+        }
+
+        return 0x22d3ee;
+    }
+
+    function makeGlowPad(width, depth, color) {
+        const mesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(width, depth),
+            makeMaterial(color, {
+                transparent: true,
+                opacity: 0.18,
+                emissive: color,
+                emissiveIntensity: 0.8,
+                metalness: 0.05,
+                roughness: 0.2,
+            }),
+        );
+
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.y = 0.012;
+        mesh.userData.baseOpacity = 0.18;
+        return mesh;
+    }
+
+    function createStageGlowSystem(chamberWidth) {
+        stageGlowGroup = new THREE.Group();
+        stageGlowGroup.visible = true;
+
+        const items = [
+            { id: "occupancy", x: 0, z: 0, w: 2.4, d: 1.65, c: 0xf59e0b },
+            { id: "rfid", x: -0.75, z: 0.85, w: 0.52, d: 0.34, c: 0x38bdf8 },
+            { id: "fingerprint", x: 0, z: 0.85, w: 0.52, d: 0.34, c: 0x38bdf8 },
+            { id: "face", x: 0.75, z: 0.85, w: 0.52, d: 0.34, c: 0x38bdf8 },
+            { id: "behavior", x: 0, z: -0.85, w: 0.72, d: 0.36, c: 0x38bdf8 },
+            { id: "chamber", x: 0.92, z: 0, w: 0.68, d: 1.35, c: 0xfacc15 },
+            { id: "inner_door", x: chamberWidth / 2 - 0.10, z: 0, w: 0.42, d: 1.12, c: 0x22c55e },
+            { id: "granted", x: chamberWidth / 2 - 0.10, z: 0, w: 0.54, d: 1.35, c: 0x22c55e },
+        ];
+
+        items.forEach((item) => {
+            const pad = makeGlowPad(item.w, item.d, item.c);
+            pad.position.x = item.x;
+            pad.position.z = item.z;
+            pad.visible = false;
+            pad.userData.stageId = item.id;
+            stageGlowGroup.add(pad);
+        });
+
+        chamberGroup.add(stageGlowGroup);
+    }
+
+    function createAccessPath() {
+        const points = [
+            new THREE.Vector3(-1.65, 0.035, 0),
+            new THREE.Vector3(-0.6, 0.035, 0),
+            new THREE.Vector3(0.6, 0.035, 0),
+            new THREE.Vector3(1.65, 0.035, 0),
+        ];
+
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({
+            color: 0x22d3ee,
+            transparent: true,
+            opacity: 0.34,
+        });
+
+        accessPathLine = new THREE.Line(geometry, material);
+        chamberGroup.add(accessPathLine);
+    }
+
+    function createAuthCheckpointDots() {
+        const group = new THREE.Group();
+        group.name = "authCheckpointDots";
+        group.position.set(0, 1.42, 0);
+
+        ["rfid", "fingerprint", "face"].forEach((id, index) => {
+            const dot = new THREE.Mesh(
+                new THREE.SphereGeometry(0.045, 18, 18),
+                makeMaterial(0x64748b, {
+                    emissive: 0x334155,
+                    emissiveIntensity: 0.35,
+                    metalness: 0.15,
+                    roughness: 0.25,
+                }),
+            );
+
+            dot.position.x = (index - 1) * 0.14;
+            dot.userData.authDot = id;
+            group.add(dot);
+        });
+
+        return group;
+    }
+
+    function updateCheckpointDots(status) {
+        if (!personGroup) {
+            return;
+        }
+
+        const activeStage = getActiveStage(status);
+        const order = ["rfid", "fingerprint", "face"];
+        const activeIndex = order.indexOf(activeStage);
+
+        personGroup.traverse((child) => {
+            if (!child.userData || !child.userData.authDot || !child.material) {
+                return;
+            }
+
+            const dotIndex = order.indexOf(child.userData.authDot);
+            let color = 0x64748b;
+            let intensity = 0.25;
+
+            if (activeStage === "granted" || activeStage === "chamber" || activeStage === "inner_door") {
+                color = 0x22c55e;
+                intensity = 0.95;
+            } else if (dotIndex >= 0 && activeIndex >= 0 && dotIndex < activeIndex) {
+                color = 0x22c55e;
+                intensity = 0.85;
+            } else if (child.userData.authDot === activeStage) {
+                color = 0x38bdf8;
+                intensity = 1.1;
+            }
+
+            child.material.color.setHex(color);
+            child.material.emissive.setHex(color);
+            child.material.emissiveIntensity = intensity;
+        });
+    }
+
+    function updateStageGlow(status, time) {
+        if (!stageGlowGroup) {
+            return;
+        }
+
+        const activeStage = getActiveStage(status);
+        const pulse = 0.16 + Math.sin(time * 3.4) * 0.06;
+        const color = stageColor(activeStage, status);
+
+        stageGlowGroup.children.forEach((pad) => {
+            const visible = pad.userData.stageId === activeStage;
+
+            pad.visible = visible;
+
+            if (visible && pad.material) {
+                pad.material.color.setHex(color);
+                pad.material.emissive.setHex(color);
+                pad.material.opacity = pulse;
+                pad.scale.setScalar(1 + Math.sin(time * 2.2) * 0.035);
+            }
+        });
+
+        if (accessPathLine && accessPathLine.material) {
+            accessPathLine.material.color.setHex(color);
+            accessPathLine.material.opacity = activeStage === "granted" ? 0.75 : 0.35;
+        }
+    }
+
+    function updateInnerConfirmCountdown(status) {
+        const box = document.getElementById("inner-confirm-countdown");
+        const value = document.getElementById("inner-confirm-countdown-value");
+
+        if (!box || !value) {
+            return;
+        }
+
+        const activeStage = getActiveStage(status);
+        const isInnerConfirmation = (
+            status?.fsm_state === "WAIT_INNER_BUTTON_CONFIRM" ||
+            activeStage === "chamber" ||
+            status?.workflow?.active_stage === "chamber"
+        );
+
+        if (!isInnerConfirmation) {
+            box.classList.add("d-none");
+            return;
+        }
+
+        const elapsed = Math.floor((Date.now() - workflowStateChangedAt) / 1000);
+        const remaining = Math.max(0, 10 - elapsed);
+
+        value.textContent = String(remaining);
+        box.classList.remove("d-none");
+        box.classList.toggle("warning", remaining <= 5);
+    }
+
+    function setViewPreset(name) {
+        if (name === "top") {
+            view.targetRotationX = Math.PI / 2;
+            view.targetRotationY = 0;
+            view.targetZoom = 1.02;
+            view.targetOffsetY = 0.95;
+            return;
+        }
+
+        if (name === "front") {
+            view.targetRotationX = -0.20;
+            view.targetRotationY = 1.12;
+            view.targetZoom = 1.10;
+            view.targetOffsetY = 0;
+            return;
+        }
+
+        if (name === "side") {
+            view.targetRotationX = -0.28;
+            view.targetRotationY = 0.04;
+            view.targetZoom = 1.12;
+            view.targetOffsetY = 0;
+        }
+    }
+
 
     function buildScene() {
         const canvas = document.getElementById("mantrap-3d-canvas");
@@ -471,6 +723,9 @@ window.MantrapVisual = (function () {
 
         rootGroup.add(chamberGroup);
 
+        createStageGlowSystem(chamberWidth);
+        createAccessPath();
+
         // Doors are now integrated into the chamber wall openings.
         outerDoor = createSingleDoorSystem(-(chamberWidth / 2) - 0.02, "OUTER DOOR", "left");
         innerDoor = createSingleDoorSystem((chamberWidth / 2) + 0.02, "INNER DOOR", "right");
@@ -497,6 +752,7 @@ window.MantrapVisual = (function () {
 
         bindMouseControls(wrap);
         bindResetButton();
+        bindViewPresetButtons();
 
         window.addEventListener("resize", resizeRenderer);
 
@@ -523,10 +779,17 @@ window.MantrapVisual = (function () {
             const dy = event.clientY - view.lastY;
 
             view.targetRotationY += dx * 0.008;
-            view.targetRotationX += dy * 0.006;
-            view.targetRotationX = Math.max(-1.05, Math.min(0.1, view.targetRotationX));
+            
+            if (view.targetRotationY > Math.PI * 2 || view.targetRotationY < -Math.PI * 2) {
+                view.targetRotationY = ((view.targetRotationY + Math.PI) % (Math.PI * 2)) - Math.PI;
+            }
+view.targetRotationX += dy * 0.006;
 
-            view.lastX = event.clientX;
+            
+            if (view.targetRotationX > Math.PI * 2 || view.targetRotationX < -Math.PI * 2) {
+                view.targetRotationX = ((view.targetRotationX + Math.PI) % (Math.PI * 2)) - Math.PI;
+            }
+view.lastX = event.clientX;
             view.lastY = event.clientY;
         });
 
@@ -546,6 +809,14 @@ window.MantrapVisual = (function () {
         }, { passive: false });
     }
 
+    function bindViewPresetButtons() {
+        document.querySelectorAll(".mantrap-view-preset").forEach((button) => {
+            button.addEventListener("click", () => {
+                setViewPreset(button.dataset.view);
+            });
+        });
+    }
+
     function bindResetButton() {
         const button = document.getElementById("mantrap-3d-reset-view");
 
@@ -557,6 +828,8 @@ window.MantrapVisual = (function () {
             view.targetRotationX = -0.42;
             view.targetRotationY = 0.62;
             view.targetZoom = 1;
+            view.targetOffsetY = 0;
+            view.targetOffsetY = 0;
         });
     }
 
@@ -656,7 +929,20 @@ window.MantrapVisual = (function () {
 
         if (yoloRunning) {
             persistedDetectedPersonCount = liveCount;
+            personExitActive = false;
+            personExitCompleted = false;
+
+            if (personGroup) {
+                personGroup.position.x = 0;
+                personGroup.position.z = 0;
+            }
+
             return liveCount;
+        }
+
+        if (isAccessExitState(status) && persistedDetectedPersonCount > 0 && !personExitCompleted) {
+            personExitActive = true;
+            return persistedDetectedPersonCount;
         }
 
         if (liveCount > 0) {
@@ -664,7 +950,7 @@ window.MantrapVisual = (function () {
             return liveCount;
         }
 
-        return persistedDetectedPersonCount;
+        return personExitCompleted ? 0 : persistedDetectedPersonCount;
     }
 
     function renderPersons(count) {
@@ -751,7 +1037,9 @@ window.MantrapVisual = (function () {
         view.rotationX += (view.targetRotationX - view.rotationX) * 0.08;
         view.rotationY += (view.targetRotationY - view.rotationY) * 0.08;
         view.zoom += (view.targetZoom - view.zoom) * 0.08;
+        view.offsetY += (view.targetOffsetY - view.offsetY) * 0.08;
 
+        rootGroup.position.y = 1.65 + view.offsetY;
         rootGroup.rotation.x = view.rotationX;
         rootGroup.rotation.y = view.rotationY;
         rootGroup.scale.setScalar(view.zoom);
@@ -767,7 +1055,25 @@ window.MantrapVisual = (function () {
             statusLine.rotation.z = time * 0.28;
         }
 
+        if (lastStatus) {
+            updateStageGlow(lastStatus, time);
+            updateCheckpointDots(lastStatus);
+            updateInnerConfirmCountdown(lastStatus);
+        }
+
         if (personGroup) {
+            if (personExitActive) {
+                personGroup.position.x += (1.62 - personGroup.position.x) * 0.045;
+
+                if (personGroup.position.x > 1.48) {
+                    personExitCompleted = true;
+                    personExitActive = false;
+                    persistedDetectedPersonCount = 0;
+                    renderPersons(0);
+                    personGroup.position.x = 0;
+                }
+            }
+
             personGroup.children.forEach((person, index) => {
                 person.position.y = 0.05 + Math.sin(time * 2.2 + index) * 0.035;
                 person.rotation.y += 0.01;
@@ -784,13 +1090,23 @@ window.MantrapVisual = (function () {
             if (lastStatus) {
                 renderPersons(resolveDisplayPersonCount(lastStatus));
                 updateOverlay(lastStatus);
+                updateInnerConfirmCountdown(lastStatus);
+                updateInnerConfirmCountdown(lastStatus);
             }
         });
     }
 
     return {
         update(status) {
-            lastStatus = status || {};
+            const nextStatus = status || {};
+            const nextWorkflowState = nextStatus.fsm_state || "UNKNOWN";
+
+            if (currentWorkflowState !== nextWorkflowState) {
+                currentWorkflowState = nextWorkflowState;
+                workflowStateChangedAt = Date.now();
+            }
+
+            lastStatus = nextStatus;
 
             if (!scene) {
                 init();
