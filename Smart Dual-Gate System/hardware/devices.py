@@ -8,6 +8,13 @@ from hardware import gpio_map
 # GPIO Initialization
 # =========================
 
+# Limit switch calibrated GPIO values
+# These values match the current tested hardware behavior.
+LIMIT_SWITCH_GPIO_WHEN_DOOR_CLOSED = 1
+LIMIT_SWITCH_GPIO_WHEN_DOOR_OPEN = 0
+# End limit switch calibrated GPIO values
+
+
 def initialize_gpio():
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
@@ -96,19 +103,19 @@ def read_inner_limit_switch():
 
 
 def is_outer_door_closed():
-    return read_outer_limit_switch() == settings.DOOR_OPEN
+    return read_outer_limit_switch() == LIMIT_SWITCH_GPIO_WHEN_DOOR_CLOSED
 
 
 def is_outer_door_open():
-    return read_outer_limit_switch() == settings.DOOR_CLOSED
+    return read_outer_limit_switch() == LIMIT_SWITCH_GPIO_WHEN_DOOR_OPEN
 
 
 def is_inner_door_closed():
-    return read_inner_limit_switch() == settings.DOOR_OPEN
+    return read_inner_limit_switch() == LIMIT_SWITCH_GPIO_WHEN_DOOR_CLOSED
 
 
 def is_inner_door_open():
-    return read_inner_limit_switch() == settings.DOOR_CLOSED
+    return read_inner_limit_switch() == LIMIT_SWITCH_GPIO_WHEN_DOOR_OPEN
 
 
 def are_both_doors_closed():

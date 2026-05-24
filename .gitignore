@@ -60,3 +60,58 @@ logs/
 **/logs/
 !**/web_dashboard/templates/logs/
 !**/web_dashboard/templates/logs/**
+
+# Local backup folders
+/backup-*/
+/backups/
+/Smart Dual-Gate System/backups/
+
+# Runtime generated files
+/Smart Dual-Gate System/runtime/*.pid
+/Smart Dual-Gate System/runtime/*.lock
+/Smart Dual-Gate System/runtime/*.json
+/Smart Dual-Gate System/runtime/*.log
+/Smart Dual-Gate System/logs/*.log
+
+# Local databases and database backups
+/Smart Dual-Gate System/database/*.db
+/Smart Dual-Gate System/database/*.sqlite
+/Smart Dual-Gate System/backups/**/*.db
+/Smart Dual-Gate System/backups/**/*.sqlite
+
+# Local environment secrets
+.env
+/Smart Dual-Gate System/.env
+
+# Python generated files
+__pycache__/
+*.pyc
+# Local backup/archive folders
+/backup-*/
+/backups/
+/github_backup_before_dashboard/
+/Smart-Dual-Gate-Security-System-Graduation-Project/
+/Smart Dual-Gate System/backups/
+
+# Runtime generated files
+/Smart Dual-Gate System/runtime/*.pid
+/Smart Dual-Gate System/runtime/*.lock
+/Smart Dual-Gate System/runtime/*.json
+/Smart Dual-Gate System/runtime/*.log
+/Smart Dual-Gate System/logs/*.log
+
+# Local databases and backups
+/Smart Dual-Gate System/database/*.db
+/Smart Dual-Gate System/database/*.sqlite
+/Smart Dual-Gate System/database/*.db.bak*
+/Smart Dual-Gate System/**/*.bak*
+/Smart Dual-Gate System/**/*.backup*
+
+# Local environment secrets
+.env
+/Smart Dual-Gate System/.env
+/Smart Dual-Gate System/.env.bak*
+
+# Python generated files
+__pycache__/
+*.pyc

@@ -4,6 +4,7 @@ import threading
 import os
 import signal
 import subprocess
+import socket
 from collections import deque
 from flask import Flask, Response
 from ultralytics import YOLO
@@ -34,6 +35,19 @@ latest_frame = None
 recent_counts = deque(maxlen=15)
 
 lock = threading.Lock()
+
+def get_local_ip():
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as network_socket:
+            network_socket.connect(("8.8.8.8", 80))
+            return network_socket.getsockname()[0]
+    except Exception:
+        return "127.0.0.1"
+
+
+def get_stream_url():
+    return f"http://{get_local_ip()}:{STREAM_PORT}"
+
 
 
 def is_monitor_running():
@@ -229,7 +243,7 @@ def start_room_monitor():
         flask_thread.start()
 
     print("[AI] YOLO room monitor started", flush=True)
-    print("[AI] Open stream: http://192.168.1.28:5000", flush=True)
+    print(f"[AI] Open stream: {get_stream_url()}", flush=True)
 
 
 def stop_room_monitor():

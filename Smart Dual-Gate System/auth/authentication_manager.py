@@ -12,13 +12,10 @@ sys.path.append(str(PROJECT_DIR))
 from database.authentication_attempt_repository import create_authentication_attempt
 from hardware import indicators
 from database.access_session_repository import start_access_session
-from hardware import indicators
 from database.system_setting_repository import get_setting_value
-from hardware import indicators
 from hardware import devices
 from core import system_status
 from utils import notification_manager
-
 
 class AuthenticationManager:
 
@@ -180,15 +177,17 @@ class AuthenticationManager:
 
         return None
 
-    def _send_whatsapp_alert_stub(self, message):
+    def _send_behavior_email_alert(self, message, severity="MEDIUM"):
         print("[ALERT] Behavior alert redirected to Email Alert channel", flush=True)
-
         notification_manager.send_email_security_alert(
             message=message,
             alert_title="Authentication Behavior Alert",
-            severity="MEDIUM",
+            severity=severity,
             include_snapshots=True
         )
+
+    def _send_whatsapp_alert_stub(self, message, severity="MEDIUM"):
+        self._send_behavior_email_alert(message, severity)
 
     def _log_failed_attempt(self, rfid_status=None, fingerprint_status=None,
                             face_status=None, behavior_status=None,
@@ -453,8 +452,9 @@ class AuthenticationManager:
 
                         print("[AUTH] Behavior check medium warning", flush=True)
 
-                        self._send_whatsapp_alert_stub(
-                            "Medium suspicious behavior detected during authentication"
+                        self._send_behavior_email_alert(
+                            "Medium suspicious behavior detected during authentication",
+                            severity="MEDIUM"
                         )
                         break
 
@@ -463,8 +463,9 @@ class AuthenticationManager:
 
                 print("[AUTH] Behavior check danger detected", flush=True)
 
-                self._send_whatsapp_alert_stub(
-                    "Danger behavior detected during authentication"
+                self._send_behavior_email_alert(
+                    "Danger behavior detected during authentication",
+                    severity="HIGH"
                 )
 
                 self.enable_back_cancel_after_failed_attempt()
@@ -550,4 +551,4 @@ def is_cancel_requested():
 
 
 def get_current_auth_stage():
-    return auth_manager.get_current_auth_stage()
+    return _auth_manager.get_current_auth_stage()

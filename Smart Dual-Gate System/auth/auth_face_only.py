@@ -4,7 +4,6 @@ import sys
 import time
 import sqlite3
 import warnings
-from pathlib import Path
 
 import cv2
 import face_recognition

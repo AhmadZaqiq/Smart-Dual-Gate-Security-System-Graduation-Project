@@ -1,0 +1,76 @@
+.gitignore
+README.md
+Smart Dual-Gate System/.env.example
+Smart Dual-Gate System/ai/README.md
+Smart Dual-Gate System/ai/__init__.py
+Smart Dual-Gate System/ai/yolo_room_monitor.py
+Smart Dual-Gate System/auth/README.md
+Smart Dual-Gate System/auth/__init__.py
+Smart Dual-Gate System/auth/auth_face_only.py
+Smart Dual-Gate System/auth/authentication_manager.py
+Smart Dual-Gate System/config/README.md
+Smart Dual-Gate System/config/__init__.py
+Smart Dual-Gate System/config/settings.py
+Smart Dual-Gate System/core/README.md
+Smart Dual-Gate System/core/__init__.py
+Smart Dual-Gate System/database/README.md
+Smart Dual-Gate System/database/__init__.py
+Smart Dual-Gate System/hardware/README.md
+Smart Dual-Gate System/hardware/__init__.py
+Smart Dual-Gate System/hardware/devices.py
+Smart Dual-Gate System/utils/README.md
+Smart Dual-Gate System/utils/__init__.py
+Smart Dual-Gate System/web_dashboard/README.md
+development_and_testing/yolo_dataset/images/raw/img_0000.jpg
+development_and_testing/yolo_dataset/images/raw/img_0001.jpg
+development_and_testing/yolo_dataset/images/raw/img_0002.jpg
+development_and_testing/yolo_dataset/images/raw/img_0003.jpg
+development_and_testing/yolo_dataset/images/raw/img_0004.jpg
+development_and_testing/yolo_dataset/images/raw/img_0005.jpg
+development_and_testing/yolo_dataset/images/raw/img_0006.jpg
+development_and_testing/yolo_dataset/images/raw/img_0007.jpg
+development_and_testing/yolo_dataset/images/raw/img_0008.jpg
+development_and_testing/yolo_dataset/images/raw/img_0009.jpg
+development_and_testing/yolo_dataset/images/raw/img_0010.jpg
+development_and_testing/yolo_dataset/images/raw/img_0011.jpg
+development_and_testing/yolo_dataset/images/raw/img_0012.jpg
+development_and_testing/yolo_dataset/images/raw/img_0013.jpg
+development_and_testing/yolo_dataset/images/raw/img_0014.jpg
+development_and_testing/yolo_dataset/images/raw/img_0015.jpg
+development_and_testing/yolo_dataset/images/raw/img_0016.jpg
+development_and_testing/yolo_dataset/images/raw/img_0017.jpg
+development_and_testing/yolo_dataset/images/raw/img_0018.jpg
+development_and_testing/yolo_dataset/images/raw/img_0019.jpg
+development_and_testing/yolo_dataset/images/raw/img_0020.jpg
+development_and_testing/yolo_dataset/images/raw/img_0021.jpg
+development_and_testing/yolo_dataset/images/raw/img_0022.jpg
+development_and_testing/yolo_dataset/images/raw/img_0023.jpg
+development_and_testing/yolo_dataset/images/raw/img_0024.jpg
+development_and_testing/yolo_dataset/images/raw/img_0025.jpg
+development_and_testing/yolo_dataset/images/raw/img_0026.jpg
+development_and_testing/yolo_dataset/images/raw/img_0027.jpg
+development_and_testing/yolo_dataset/images/raw/img_0028.jpg
+development_and_testing/yolo_dataset/images/raw/img_0029.jpg
+development_and_testing/yolo_dataset/images/raw/img_0030.jpg
+development_and_testing/yolo_dataset/images/raw/img_0031.jpg
+development_and_testing/yolo_dataset/images/raw/img_0032.jpg
+development_and_testing/yolo_dataset/images/raw/img_0033.jpg
+development_and_testing/yolo_dataset/images/raw/img_0034.jpg
+development_and_testing/yolo_dataset/images/raw/img_0035.jpg
+development_and_testing/yolo_dataset/images/raw/img_0036.jpg
+development_and_testing/yolo_dataset/images/raw/img_0037.jpg
+development_and_testing/yolo_dataset/images/raw/img_0038.jpg
+development_and_testing/yolo_dataset/images/raw/img_0039.jpg
+development_and_testing/yolo_dataset/images/raw/img_0040.jpg
+development_and_testing/yolo_dataset/images/raw/img_0041.jpg
+development_and_testing/yolo_dataset/images/raw/img_0042.jpg
+development_and_testing/yolo_dataset/images/raw/img_0043.jpg
+development_and_testing/yolo_dataset/images/raw/img_0044.jpg
+development_and_testing/yolo_dataset/images/raw/img_0045.jpg
+development_and_testing/yolo_dataset/images/raw/img_0046.jpg
+development_and_testing/yolo_dataset/images/raw/img_0047.jpg
+development_and_testing/yolo_dataset/images/raw/img_0048.jpg
+development_and_testing/yolo_dataset/images/raw/img_0049.jpg
+development_and_testing/yolo_dataset/images/raw/img_0050.jpg
+development_and_testing/yolo_dataset/images/raw/img_0051.jpg
+development_and_testing/

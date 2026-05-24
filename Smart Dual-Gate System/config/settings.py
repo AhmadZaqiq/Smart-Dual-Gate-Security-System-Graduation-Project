@@ -16,15 +16,10 @@ INNER_CAM_DEVICE = "/dev/mantrap-innercam"
 # =========================
 # Door Logic
 # =========================
-# NC Limit Switch Logic
-# 0 = Door Closed
-# 1 = Door Open
-# =========================
-
+# Legacy door constants kept for compatibility
+# Physical limit switch calibration is handled in hardware/devices.py
 DOOR_CLOSED = 0
 DOOR_OPEN = 1
-
-
 # =========================
 # Relay Logic
 # =========================
