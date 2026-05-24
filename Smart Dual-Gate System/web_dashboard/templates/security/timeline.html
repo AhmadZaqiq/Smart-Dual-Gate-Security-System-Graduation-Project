@@ -1,7 +1,9 @@
 {% extends "layouts/base.html" %}
 {% block title %}Security Timeline{% endblock %}
 {% block content %}
-{% set title = "Security Timeline" %}{% include "layouts/partials/_page_header.html" %}
+{% set title = "Security Timeline" %}
+{% include "layouts/partials/_page_header.html" %}
+
 <ul class="timeline">
 {% for event in events %}
 <li class="timeline-event">
@@ -9,11 +11,26 @@
     <div class="card timeline-event-card">
         <div class="card-body">
             <div class="text-secondary small">{{ event.CreationDate }}</div>
-            <h4>{{ event.EventType }} <span class="badge {{ event.Severity|badge_class }}">{{ event.Severity }}</span></h4>
-            <p>{{ event.Description or 'No description.' }}</p>
+            <h4>
+                {{ event.EventType|humanize }}
+                <span class="badge {{ event.Severity|badge_class }}">{{ event.Severity|humanize }}</span>
+            </h4>
+
+            <p class="mb-1">{{ event.Description or 'No description.' }}</p>
+
+            <div class="text-secondary small">
+                Detected Persons:
+                {% if event.DetectedPersonsCount is not none %}
+                    {{ event.DetectedPersonsCount }}
+                {% else %}
+                    Not recorded
+                {% endif %}
+            </div>
         </div>
     </div>
 </li>
-{% else %}<li class="text-secondary">No events in timeline.</li>{% endfor %}
+{% else %}
+<li class="text-secondary">No events in timeline.</li>
+{% endfor %}
 </ul>
 {% endblock %}

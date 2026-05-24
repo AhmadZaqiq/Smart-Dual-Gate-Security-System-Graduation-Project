@@ -73,6 +73,10 @@ class MantrapFSM:
         self.alarm_level_3_done = False
         self.last_countdown_second = None
 
+        self.invalid_room_count_start_time = None
+        self.last_invalid_room_event_time = 0
+        self.last_invalid_room_event_count = None
+
     def change_state(self, new_state):
         system_logger.log_info(
             f"State changed: {self.current_state} -> {new_state}"
@@ -85,6 +89,10 @@ class MantrapFSM:
         self.alarm_level_2_done = False
         self.alarm_level_3_done = False
         self.last_countdown_second = None
+
+        self.invalid_room_count_start_time = None
+        self.last_invalid_room_event_time = 0
+        self.last_invalid_room_event_count = None
 
     def reset_door_tracking(self):
         self.outer_door_was_opened = False
@@ -257,23 +265,63 @@ class MantrapFSM:
             system_logger.log_info("Exactly one figure detected")
             indicators.beep_success()
 
+            self.invalid_room_count_start_time = None
             self.reset_warning_data()
             self.change_state(states.AUTHENTICATION_READY)
             return
+
+        current_time = time.time()
+
+        if detected_count == 0:
+            if self.invalid_room_count_start_time is None:
+                self.invalid_room_count_start_time = current_time
+                system_logger.log_info(
+                    "[AI] Zero-person count detected. Waiting for stable confirmation."
+                )
+                time.sleep(0.2)
+                return
+
+            elapsed_invalid_time = current_time - self.invalid_room_count_start_time
+
+            if elapsed_invalid_time < settings.INVALID_ROOM_COUNT_CONFIRM_SECONDS:
+                system_logger.log_info(
+                    "[AI] Zero-person count still confirming before warning"
+                )
+                time.sleep(0.2)
+                return
+        else:
+            self.invalid_room_count_start_time = current_time
 
         system_logger.log_warning(
             f"Invalid room count detected: {detected_count}"
         )
 
-        create_security_event(
-            event_type="INVALID_ROOM_COUNT",
-            severity="MEDIUM",
-            detected_persons_count=detected_count,
-            description=(
-                "Invalid room count detected before authentication: "
-                f"{detected_count}"
+        should_save_event = True
+
+        if self.last_invalid_room_event_count == detected_count:
+            elapsed_since_last_event = (
+                current_time - self.last_invalid_room_event_time
             )
-        )
+
+            if elapsed_since_last_event < settings.INVALID_ROOM_EVENT_COOLDOWN_SECONDS:
+                should_save_event = False
+                system_logger.log_info(
+                    "[DATABASE] Duplicate invalid room count event skipped by cooldown"
+                )
+
+        if should_save_event:
+            create_security_event(
+                event_type="INVALID_ROOM_COUNT",
+                severity="MEDIUM",
+                detected_persons_count=detected_count,
+                description=(
+                    "Invalid room count detected before authentication: "
+                    f"{detected_count}"
+                )
+            )
+
+            self.last_invalid_room_event_time = current_time
+            self.last_invalid_room_event_count = detected_count
 
         indicators.beep_alarm_level_1()
 
@@ -281,6 +329,7 @@ class MantrapFSM:
         self.warning_start_time = time.time()
 
         self.change_state(states.MULTI_PERSON_WARNING)
+
 
     def handle_multi_person_warning(self):
         detected_count = yolo_room_monitor.get_detected_count()

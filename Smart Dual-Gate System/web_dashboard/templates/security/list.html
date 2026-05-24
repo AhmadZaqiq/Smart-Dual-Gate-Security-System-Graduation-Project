@@ -1,16 +1,110 @@
 {% extends "layouts/base.html" %}
 {% block title %}Security Events{% endblock %}
 {% block content %}
-{% set title = "Security Events" %}{% set action_url = url_for('security.timeline') %}{% set action_label = "Timeline View" %}{% include "layouts/partials/_page_header.html" %}
-<div class="card mb-3"><div class="card-body"><form class="row g-2" method="get">
-    <div class="col-md-3"><input type="text" name="q" class="form-control" placeholder="Search..." value="{{ filters.q }}"></div>
-    <div class="col-md-2"><select name="severity" class="form-select"><option value="">All Severity</option><option value="LOW" {% if filters.severity=='LOW' %}selected{% endif %}>LOW</option><option value="MEDIUM" {% if filters.severity=='MEDIUM' %}selected{% endif %}>MEDIUM</option><option value="HIGH" {% if filters.severity=='HIGH' %}selected{% endif %}>HIGH</option></select></div>
-    <div class="col-md-2"><select name="resolved" class="form-select"><option value="">All</option><option value="0" {% if filters.resolved=='0' %}selected{% endif %}>Unresolved</option><option value="1" {% if filters.resolved=='1' %}selected{% endif %}>Resolved</option></select></div>
-    <div class="col-md-2"><button class="btn btn-primary w-100">Filter</button></div>
-</form></div></div>
-<div class="card"><div class="table-responsive"><table class="table table-vcenter card-table"><thead><tr><th>ID</th><th>Type</th><th>Severity</th><th>Count</th><th>Resolved</th><th>Date</th><th></th></tr></thead><tbody>
-{% for row in events %}<tr class="{% if row.Severity=='HIGH' and not row.IsResolved %}row-danger-soft{% endif %}"><td>{{ row.SecurityEventID }}</td><td>{{ row.EventType|humanize }}</td><td><span class="badge {{ row.Severity|badge_class }}">{{ row.Severity|humanize }}</span></td><td>{{ row.DetectedPersonsCount or '-' }}</td><td>{% if row.IsResolved %}<span class="badge bg-success">Yes</span>{% else %}<span class="badge bg-warning">No</span>{% endif %}</td><td>{{ row.CreationDate }}</td><td><a href="{{ url_for('security.event_detail', event_id=row.SecurityEventID) }}" class="btn btn-sm btn-outline-primary">Details</a></td></tr>
-{% else %}<tr><td colspan="7" class="text-secondary text-center">No security events.</td></tr>{% endfor %}
-</tbody></table></div></div>
+{% set title = "Security Events" %}
+{% set action_url = url_for('security.timeline') %}
+{% set action_label = "Timeline View" %}
+{% include "layouts/partials/_page_header.html" %}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form class="row g-2" method="get">
+            <div class="col-md-3">
+                <input type="text" name="q" class="form-control" placeholder="Search event type or description..." value="{{ filters.q }}">
+            </div>
+
+            <div class="col-md-2">
+                <select name="severity" class="form-select">
+                    <option value="">All Severity</option>
+                    <option value="LOW" {% if filters.severity=='LOW' %}selected{% endif %}>Low</option>
+                    <option value="MEDIUM" {% if filters.severity=='MEDIUM' %}selected{% endif %}>Medium</option>
+                    <option value="HIGH" {% if filters.severity=='HIGH' %}selected{% endif %}>High</option>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select name="resolved" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="0" {% if filters.resolved=='0' %}selected{% endif %}>Open</option>
+                    <option value="1" {% if filters.resolved=='1' %}selected{% endif %}>Resolved</option>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100">Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Event Type</th>
+                    <th>Severity</th>
+                    <th>Detected Persons</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for row in events %}
+                <tr class="{% if row.Severity=='HIGH' and not row.IsResolved %}row-danger-soft{% endif %}">
+                    <td>{{ row.SecurityEventID }}</td>
+
+                    <td>
+                        <div class="fw-bold">{{ row.EventType|humanize }}</div>
+                        {% if row.Description %}
+                        <div class="text-secondary small">{{ row.Description }}</div>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <span class="badge {{ row.Severity|badge_class }}">
+                            {{ row.Severity|humanize }}
+                        </span>
+                    </td>
+
+                    <td>
+                        {% if row.DetectedPersonsCount is not none %}
+                            <span class="status-pill" data-state="{% if row.DetectedPersonsCount == 1 %}CLOSED{% elif row.DetectedPersonsCount == 0 %}UNKNOWN{% else %}WARNING{% endif %}">
+                                {{ row.DetectedPersonsCount }}
+                            </span>
+                        {% else %}
+                            <span class="text-secondary">Not recorded</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if row.IsResolved %}
+                            <span class="badge bg-success">Resolved</span>
+                        {% else %}
+                            <span class="badge bg-warning">Open</span>
+                        {% endif %}
+                    </td>
+
+                    <td>{{ row.CreationDate }}</td>
+
+                    <td>
+                        <a href="{{ url_for('security.event_detail', event_id=row.SecurityEventID) }}" class="btn btn-sm btn-outline-primary">
+                            Details
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-secondary text-center">No security events.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
 {% include "components/pagination.html" %}
 {% endblock %}
