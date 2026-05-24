@@ -91,6 +91,10 @@ def edit_employee(employee_id):
             employee_id,
             {
                 "employee_number": form.employee_number.data.strip(),
+                "first_name": form.first_name.data.strip(),
+                "second_name": form.second_name.data.strip(),
+                "third_name": form.third_name.data.strip(),
+                "last_name": form.last_name.data.strip(),
                 "is_active": detail["employee"].get("IsActive", 1),
                 "rfid_uid": form.rfid_uid.data.strip() if form.rfid_uid.data else None,
                 "fingerprint_position": form.fingerprint_position.data,

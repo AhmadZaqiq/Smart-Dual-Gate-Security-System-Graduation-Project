@@ -18,7 +18,7 @@ from database.employee_repository import (  # noqa: E402
     search_employees,
     update_employee,
 )
-from database.person_repository import create_person, get_person_by_id  # noqa: E402
+from database.person_repository import create_person, get_person_by_id, update_person  # noqa: E402
 
 
 def list_employees(search_text=None):
@@ -81,6 +81,22 @@ def create_employee_record(admin_user_id, form_data):
 
 
 def update_employee_record(admin_user_id, employee_id, form_data):
+    employee = get_employee_by_id(employee_id)
+
+    if not employee:
+        return False, "Employee record was not found."
+
+    person_success = update_person(
+        employee["PersonID"],
+        form_data["first_name"],
+        form_data["second_name"],
+        form_data["third_name"],
+        form_data["last_name"],
+    )
+
+    if not person_success:
+        return False, "Person information update failed."
+
     success = update_employee(
         employee_id,
         form_data["employee_number"],
