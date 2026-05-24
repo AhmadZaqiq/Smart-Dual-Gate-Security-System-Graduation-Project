@@ -24,6 +24,7 @@ DEFAULT_STATUS = {
     "stream_available": False,
     "active_session_id": None,
     "alarm_active": False,
+    "auth_stage": "IDLE",
 }
 
 

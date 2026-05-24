@@ -42,6 +42,13 @@ class MantrapFSM:
             states.ERROR_STATE,
         )
 
+        auth_stage = "IDLE"
+
+        try:
+            auth_stage = authentication_manager.get_current_auth_stage()
+        except Exception:
+            pass
+
         system_status.update_status_snapshot(
             fsm_state=self.current_state,
             system_online=True,
@@ -52,6 +59,7 @@ class MantrapFSM:
             stream_available=stream_available,
             active_session_id=authentication_manager.get_current_access_session_id(),
             alarm_active=alarm_active,
+            auth_stage=auth_stage,
             **extra_fields,
         )
 
@@ -464,21 +472,55 @@ class MantrapFSM:
         indicators.beep_success()
 
         start_time = time.time()
+        last_green_toggle_time = 0
+        last_warning_beep_second = None
+        green_led_is_on = False
 
         while time.time() - start_time < settings.INNER_CONFIRM_TIMEOUT:
-            devices.turn_green_led_on()
-            time.sleep(0.25)
-
-            devices.turn_green_led_off()
-            time.sleep(0.25)
+            if not devices.are_both_doors_closed():
+                devices.turn_green_led_off()
+                devices.stop_buzzer()
+                system_logger.log_security("Door opened before confirmation")
+                self.change_state(states.SECURITY_LOCKDOWN)
+                return
 
             if devices.is_inner_push_button_pressed():
+                devices.turn_green_led_off()
+                devices.stop_buzzer()
                 system_logger.log_access("Inner button confirmed")
                 self.change_state(states.INNER_DOOR_UNLOCKED)
                 return
 
+            elapsed_time = time.time() - start_time
+
+            if time.time() - last_green_toggle_time >= 0.25:
+                last_green_toggle_time = time.time()
+
+                if green_led_is_on:
+                    devices.turn_green_led_off()
+                    green_led_is_on = False
+                else:
+                    devices.turn_green_led_on()
+                    green_led_is_on = True
+
+            if elapsed_time >= 5:
+                current_warning_second = int(elapsed_time)
+
+                if current_warning_second != last_warning_beep_second:
+                    last_warning_beep_second = current_warning_second
+
+                    devices.start_buzzer()
+                    time.sleep(0.12)
+                    devices.stop_buzzer()
+
+            time.sleep(0.05)
+
+        devices.turn_green_led_off()
+        devices.stop_buzzer()
+
         system_logger.log_warning("Inner confirmation timeout")
         self.change_state(states.CANCEL_AND_EXIT)
+
 
     def handle_inner_door_unlocked(self):
         if not devices.is_outer_door_closed():

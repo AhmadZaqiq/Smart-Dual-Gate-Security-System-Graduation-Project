@@ -16,6 +16,7 @@ from hardware import indicators
 from database.system_setting_repository import get_setting_value
 from hardware import indicators
 from hardware import devices
+from core import system_status
 
 
 class AuthenticationManager:
@@ -31,12 +32,15 @@ class AuthenticationManager:
 
         self.current_employee_id = None
         self.current_access_session_id = None
+        self.current_auth_stage = "IDLE"
 
     def start(self):
         print("[AUTH] Authentication modules started", flush=True)
 
     def stop(self):
         self.back_cancel_enabled = False
+        self.current_auth_stage = "IDLE"
+        self._publish_auth_stage("IDLE")
         print("[AUTH] Authentication modules stopped", flush=True)
 
     def reset_session(self):
@@ -48,6 +52,8 @@ class AuthenticationManager:
 
         self.current_employee_id = None
         self.current_access_session_id = None
+        self.current_auth_stage = "IDLE"
+        self._publish_auth_stage("IDLE")
 
         print("[AUTH] Authentication session reset", flush=True)
 
@@ -59,6 +65,36 @@ class AuthenticationManager:
 
     def get_current_access_session_id(self):
         return self.current_access_session_id
+
+    def get_current_auth_stage(self):
+        return self.current_auth_stage
+
+    def _publish_auth_stage(self, stage):
+        self.current_auth_stage = stage
+
+        try:
+            system_status.update_status_snapshot(auth_stage=stage)
+        except Exception:
+            pass
+
+        print(f"[AUTH] Current dashboard auth stage: {stage}", flush=True)
+
+    def _publish_auth_stage_from_helper_line(self, line):
+        if line.startswith("RFID_READY") or line.startswith("RFID_CARD_DETECTED"):
+            self._publish_auth_stage("RFID")
+            return
+
+        if line.startswith("FINGER_READY") or line.startswith("PUT_FINGER"):
+            self._publish_auth_stage("FINGERPRINT")
+            return
+
+        if line.startswith("FACE_READY") or line.startswith("FACE_CAMERA_READY") or line.startswith("FACE_LOOKING"):
+            self._publish_auth_stage("FACE")
+            return
+
+        if line.startswith("BEHAVIOR_READY") or "[BEHAVIOR]" in line:
+            self._publish_auth_stage("BEHAVIOR")
+            return
 
     def is_cancel_requested(self):
         return self.cancel_requested
@@ -120,6 +156,7 @@ class AuthenticationManager:
                     clean_line = line.strip()
                     output_lines.append(clean_line)
                     print(f"[AUTH] {clean_line}", flush=True)
+                    self._publish_auth_stage_from_helper_line(clean_line)
 
             if process.poll() is not None:
                 remaining_output = process.stdout.read()
@@ -129,6 +166,7 @@ class AuthenticationManager:
                         clean_line = line.strip()
                         output_lines.append(clean_line)
                         print(f"[AUTH] {clean_line}", flush=True)
+                        self._publish_auth_stage_from_helper_line(clean_line)
 
                 break
 
@@ -191,6 +229,7 @@ class AuthenticationManager:
 
         print("[AUTH] Starting isolated authentication flow", flush=True)
         print(f"[AUTH] Loaded settings: {settings}", flush=True)
+        self._publish_auth_stage("STARTING")
 
         rfid_status = "SKIPPED"
         fingerprint_status = "SKIPPED"
@@ -198,6 +237,7 @@ class AuthenticationManager:
         behavior_status = "SKIPPED"
 
         if settings["require_rfid"]:
+            self._publish_auth_stage("RFID")
             print("[AUTH] Step 1: RFID", flush=True)
 
             rfid_ok = False
@@ -240,6 +280,7 @@ class AuthenticationManager:
                     break
 
             if not rfid_ok:
+                self._publish_auth_stage("FAILED")
                 self._log_failed_attempt(
                     rfid_status="RFID_FAILED",
                     fingerprint_status=fingerprint_status,
@@ -253,6 +294,7 @@ class AuthenticationManager:
             print("[AUTH] RFID step skipped by system settings", flush=True)
 
         if settings["require_fingerprint"]:
+            self._publish_auth_stage("FINGERPRINT")
             print("[AUTH] Step 2: Fingerprint", flush=True)
 
             fingerprint_ok = False
@@ -306,6 +348,7 @@ class AuthenticationManager:
                     break
 
             if not fingerprint_ok:
+                self._publish_auth_stage("FAILED")
                 self._log_failed_attempt(
                     rfid_status=rfid_status,
                     fingerprint_status="FINGER_FAILED",
@@ -320,6 +363,7 @@ class AuthenticationManager:
             self.current_employee_id = self._get_int_setting("DEFAULT_EMPLOYEE_ID", 1)
 
         if settings["require_face"]:
+            self._publish_auth_stage("FACE")
             print("[AUTH] Step 3: Face Recognition", flush=True)
 
             face_ok = False
@@ -359,6 +403,7 @@ class AuthenticationManager:
                     break
 
             if not face_ok:
+                self._publish_auth_stage("FAILED")
                 self._log_failed_attempt(
                     rfid_status=rfid_status,
                     fingerprint_status=fingerprint_status,
@@ -424,6 +469,7 @@ class AuthenticationManager:
                     break
 
             if not behavior_ok:
+                self._publish_auth_stage("FAILED")
                 self._log_failed_attempt(
                     rfid_status=rfid_status,
                     fingerprint_status=fingerprint_status,
@@ -456,6 +502,7 @@ class AuthenticationManager:
         print(f"[AUTH] Access session started: {self.current_access_session_id}", flush=True)
         print(f"[AUTH] Authentication success for EmployeeID: {self.current_employee_id}", flush=True)
 
+        self._publish_auth_stage("ACCESS_GRANTED")
         self.authentication_completed = True
         return True
 
@@ -493,3 +540,7 @@ def get_current_access_session_id():
 
 def is_cancel_requested():
     return _auth_manager.is_cancel_requested()
+
+
+def get_current_auth_stage():
+    return auth_manager.get_current_auth_stage()

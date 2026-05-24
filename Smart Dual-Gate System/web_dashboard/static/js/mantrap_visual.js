@@ -14,6 +14,10 @@ window.MantrapVisual = (function () {
     let animationStarted = false;
     let threeLoading = false;
     let lastStatus = null;
+    let innerDoorStableState = "UNKNOWN";
+    let innerDoorPendingState = null;
+    let innerDoorPendingCount = 0;
+    let persistedDetectedPersonCount = 0;
 
     const view = {
         rotationX: -0.42,
@@ -568,6 +572,49 @@ window.MantrapVisual = (function () {
         renderer.setSize(wrap.clientWidth, wrap.clientHeight);
     }
 
+    function resolveStableInnerDoorState(state) {
+        const normalized = normalizeDoor(state);
+        const systemIsOff = lastStatus && (
+            lastStatus.fsm_state === "SYSTEM_OFF" ||
+            lastStatus.system_online === false
+        );
+
+        if (systemIsOff && normalized !== "OPEN") {
+            innerDoorStableState = "CLOSED";
+            innerDoorPendingState = null;
+            innerDoorPendingCount = 0;
+            return innerDoorStableState;
+        }
+
+        if (normalized === "UNKNOWN") {
+            return innerDoorStableState;
+        }
+
+        if (normalized === innerDoorStableState) {
+            innerDoorPendingState = null;
+            innerDoorPendingCount = 0;
+            return innerDoorStableState;
+        }
+
+        if (normalized !== innerDoorPendingState) {
+            innerDoorPendingState = normalized;
+            innerDoorPendingCount = 1;
+            return innerDoorStableState;
+        }
+
+        innerDoorPendingCount += 1;
+
+        const requiredStableReads = systemIsOff ? 8 : 3;
+
+        if (innerDoorPendingCount >= requiredStableReads) {
+            innerDoorStableState = normalized;
+            innerDoorPendingState = null;
+            innerDoorPendingCount = 0;
+        }
+
+        return innerDoorStableState;
+    }
+
     function updateDoorVisual(door, state) {
         if (!door) {
             return;
@@ -601,6 +648,23 @@ window.MantrapVisual = (function () {
                 child.material.emissiveIntensity = normalized === "UNKNOWN" ? 0.08 : 0.18;
             }
         });
+    }
+
+    function resolveDisplayPersonCount(status) {
+        const liveCount = Number(status.yolo_person_count) || 0;
+        const yoloRunning = Boolean(status.yolo_running);
+
+        if (yoloRunning) {
+            persistedDetectedPersonCount = liveCount;
+            return liveCount;
+        }
+
+        if (liveCount > 0) {
+            persistedDetectedPersonCount = liveCount;
+            return liveCount;
+        }
+
+        return persistedDetectedPersonCount;
     }
 
     function renderPersons(count) {
@@ -694,7 +758,7 @@ window.MantrapVisual = (function () {
 
         if (lastStatus) {
             updateDoorVisual(outerDoor, lastStatus.outer_door);
-            updateDoorVisual(innerDoor, lastStatus.inner_door);
+            updateDoorVisual(innerDoor, resolveStableInnerDoorState(lastStatus.inner_door));
         }
 
         const time = performance.now() * 0.001;
@@ -718,7 +782,7 @@ window.MantrapVisual = (function () {
             buildScene();
 
             if (lastStatus) {
-                renderPersons(lastStatus.yolo_person_count);
+                renderPersons(resolveDisplayPersonCount(lastStatus));
                 updateOverlay(lastStatus);
             }
         });
@@ -733,7 +797,7 @@ window.MantrapVisual = (function () {
             }
 
             if (scene) {
-                renderPersons(lastStatus.yolo_person_count);
+                renderPersons(resolveDisplayPersonCount(lastStatus));
                 updateOverlay(lastStatus);
             }
         },
