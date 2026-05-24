@@ -267,6 +267,20 @@ def get_latest_detected_count():
     with lock:
         return latest_count
 
+def save_latest_frame_snapshot(output_path):
+    with lock:
+        if latest_frame is None:
+            return False
+
+        frame_copy = latest_frame.copy()
+
+    try:
+        cv2.imwrite(str(output_path), frame_copy)
+        return True
+    except Exception as error:
+        print(f"[AI] Failed to save YOLO latest frame snapshot: {error}", flush=True)
+        return False
+
 
 def is_exactly_one_detected():
     return get_detected_count() == 1

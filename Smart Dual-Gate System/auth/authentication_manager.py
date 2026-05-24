@@ -17,6 +17,7 @@ from database.system_setting_repository import get_setting_value
 from hardware import indicators
 from hardware import devices
 from core import system_status
+from utils import notification_manager
 
 
 class AuthenticationManager:
@@ -180,8 +181,14 @@ class AuthenticationManager:
         return None
 
     def _send_whatsapp_alert_stub(self, message):
-        print("[ALERT] WhatsApp alert stub", flush=True)
-        print(f"[ALERT] Message: {message}", flush=True)
+        print("[ALERT] Behavior alert redirected to Email Alert channel", flush=True)
+
+        notification_manager.send_email_security_alert(
+            message=message,
+            alert_title="Authentication Behavior Alert",
+            severity="MEDIUM",
+            include_snapshots=True
+        )
 
     def _log_failed_attempt(self, rfid_status=None, fingerprint_status=None,
                             face_status=None, behavior_status=None,
